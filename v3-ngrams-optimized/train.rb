@@ -1,13 +1,22 @@
 #! /usr/bin/env ruby
 
 require_relative("llm")
-require "json"
+require "msgpack"
 
-puts "TRAINING ON THESE FILES: #{Dir.foreach(ARGV[0]).to_a}"
+training_dir = ARGV[0]
+n = ARGV[1].to_i
+data_len = ARGV.size > 2 ? ARGV[2].to_i : nil
 
-training_data = Dir
-  .foreach(ARGV[0])
+output_file = data_len.nil? ? "model.#{n}.msgpack" : "model.#{n}-#{data_len}.msgpack"
+
+files = Dir
+  .foreach(training_dir)
   .to_a
+  .reject { |p| File.basename(p).start_with?(".") }
+
+puts "TRAINING ON THESE FILES: #{files}"
+
+training_data = files
   .reduce("") do |acc, f|
     if f == "." || f == ".."
       next acc
@@ -16,12 +25,13 @@ training_data = Dir
     acc
   end
 
-data_len = ARGV.size > 2 ? ARGV[2].to_i : training_data.size
 
 llm = NGramLLM.new(ARGV[1].to_i)
+
+data_len = data_len || training_data.size
 llm.train(training_data[0...data_len])
 
-File.write("model.#{ARGV[1]}-#{ARGV[2]}.json", llm.model.to_json)
+File.write("models/#{output_file}", llm.model.to_msgpack, mode: "wb")
 
-puts "MODEL WRITTEN TO: model.json"
+puts "MODEL WRITTEN TO: models/#{output_file}"
 

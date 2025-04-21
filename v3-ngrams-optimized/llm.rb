@@ -15,15 +15,8 @@ class NGramLLM
     @context_size = n - 1
   end
 
-  # Due to Ruby JSON formatting, the model is stored with the keys as strings
-  # However, it is expected for the keys to be integers.
-  # Here, we convert the keys from strings back into integers.
-  # This was not a problem in the previous version.
-  # The keys WERE strings, not encoded integers.
   def load(model)
-    @model = Hash[model.map do |k, v| 
-      [k.to_i, Hash[v.map { |k2, v2| [k2.to_i, v2] }]]
-    end]
+    @model = model
     @vocab = @model.values.map { |dict| dict.keys }.flatten.to_set
   end
 
