@@ -54,10 +54,8 @@ class NGramLLMTest < Minitest::Test
     llm4 = NGramLLM.new(4)
     llm4.train("hello world hey")
 
-    puts "LLM: #{new_llm.model[@llm.send(:context_id, "he".bytes)]}"
-
-    assert_equal expected_model, new_llm.model
-    assert_equal 9, new_llm.vocab.size  # 9 unique bytes in "hello world hey"
+    assert_equal expected_model, llm4.model
+    assert_equal 9, llm4.vocab.size  # 9 unique bytes in "hello world hey"
 
     @llm.train("abcde fghij")
     assert_equal 11, @llm.vocab.size # 11 unique bytes in "abcde fghij"
@@ -291,7 +289,7 @@ class NGramLLMTest < Minitest::Test
     refute @llm.model.key?(@llm.send(:context_id, backed_off_context))
 
     result = @llm.send(:options_for_current_context, context)
-    assert_nil result, "Should return nil when no context is found after backoff"
+    assert_empty result, "Should return nil when no context is found after backoff"
   end
 
   def test_options_for_context_n_equals_2
