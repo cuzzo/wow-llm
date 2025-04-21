@@ -109,3 +109,8 @@ This design will only work for ascii-based text. It will not work for unicode.
 
 This is an acceptable trade-off at this time, as training on several Gigabytes of text -- even on a fast comptuer -- could take days.
 
+## Other additions
+
+Tests have been added in `test.rb`.
+
+As the code is growing in complexity, it will be helpful having tests moving forward.

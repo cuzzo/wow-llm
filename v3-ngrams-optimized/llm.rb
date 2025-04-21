@@ -18,10 +18,13 @@ class NGramLLM
   # Due to Ruby JSON formatting, the model is stored with the keys as strings
   # However, it is expected for the keys to be integers.
   # Here, we convert the keys from strings back into integers.
+  # This was not a problem in the previous version.
+  # The keys WERE strings, not encoded integers.
   def load(model)
     @model = Hash[model.map do |k, v| 
       [k.to_i, Hash[v.map { |k2, v2| [k2.to_i, v2] }]]
     end]
+    @vocab = @model.values.map { |dict| dict.keys }.flatten.to_set
   end
 
   # Train the model on a given text
@@ -54,9 +57,6 @@ class NGramLLM
   def generate(prompt, length = 100)
     raise "Model not trained yet!" if @model.empty?
     raise "Prompt must be at least #{@context_size} characters long" if prompt.length < @context_size
-
-    @vocab = @model.values.map { |dict| dict.keys }.flatten.uniq
-    puts "VOCAB: #{@vocab}"
 
     # Start with the prompt (normalized to downcase, since the input is normalized to downcase)
     generated_text = prompt.downcase.bytes
@@ -103,7 +103,8 @@ class NGramLLM
 
   # Encode an n-gram of 3 bytes into a 32-bit integer.
   def context_id(byte_context)
-    ([0] + byte_context)
+    pad = [0] * (4 - byte_context.length)
+    (pad + byte_context)
       .pack('C4')
       .unpack('N')
       .first

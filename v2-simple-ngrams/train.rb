@@ -16,11 +16,12 @@ training_data = Dir
     acc
   end
 
-llm = NGramLLM.new(ARGV[1].to_i)
-llm.train(training_data)
+data_len = ARGV.size > 2 ? ARGV[2].to_i : training_data.size
 
-File.write("model.#{ARGV[1]}.json", llm.model.to_json)
+llm = NGramLLM.new(ARGV[1].to_i)
+llm.train(training_data[0...data_len])
+
+File.write("model.#{ARGV[1]}-#{ARGV[2]}.json", llm.model.to_json)
 
 puts "MODEL WRITTEN TO: model.json"
-
 

@@ -22,9 +22,24 @@ class NGramLLMTest < Minitest::Test
   end
 
   def test_training
-    @llm.train("hello world")
-    refute_empty @llm.model
-    assert_equal 8, @llm.vocab.size  # 8 unique bytes in "hello world"
+    expected_model = {
+      @llm.send(:context_id, "he".bytes) => { "l".bytes.first => 1, "y".bytes.first => 1 },
+      @llm.send(:context_id, "el".bytes) => { "l".bytes.first => 1 },
+      @llm.send(:context_id, "ll".bytes) => { "o".bytes.first => 1 },
+      @llm.send(:context_id, "lo".bytes) => { " ".bytes.first => 1 },
+      @llm.send(:context_id, "o ".bytes) => { "w".bytes.first => 1 },
+      @llm.send(:context_id, " w".bytes) => { "o".bytes.first => 1 },
+      @llm.send(:context_id, "wo".bytes) => { "r".bytes.first => 1 },
+      @llm.send(:context_id, "or".bytes) => { "l".bytes.first => 1 },
+      @llm.send(:context_id, "rl".bytes) => { "d".bytes.first => 1 },
+      @llm.send(:context_id, "ld".bytes) => { " ".bytes.first => 1 },
+      @llm.send(:context_id, "d ".bytes) => { "h".bytes.first => 1 },
+      @llm.send(:context_id, " h".bytes) => { "e".bytes.first => 1 },
+    }
+    @llm.train("hello world hey")
+
+    assert_equal expected_model, @llm.model
+    assert_equal 9, @llm.vocab.size  # 9 unique bytes in "hello world hey"
 
     new_llm = NGramLLM.new(3)
     new_llm.train("abcde fghij")
@@ -126,6 +141,9 @@ class NGramLLMTest < Minitest::Test
     # TODO: vocab does not load perfectly, as the first n tokens in the string may not be included.
     # If the test string is change from "llhello world" to "hello world",
     # The loaded model will not include "he" in the vocab.
+    #
+    # Currently, vocab is only used in sampling in our fallback.
+    # When we introduce backoff and other techniques, this won't be used.
     assert_equal original_llm.vocab.size, new_llm.vocab.size
   end
 
