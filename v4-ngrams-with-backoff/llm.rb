@@ -49,7 +49,7 @@ class NGramLLM
 
       # Add backoff options
       c2 = context.dup
-      (@context_size - 2).times do
+      (@context_size - 1).times do
         c2.shift()
         @model[context_id(c2)][next_char] += 1
       end
@@ -57,7 +57,7 @@ class NGramLLM
       # Special case for the beginning of the input
       if i == 0
         c2 = context.dup
-        (@context_size - 2).times do
+        (@context_size - 1).times do
           p_char = c2.pop()
           @model[context_id(c2)][p_char] += 1
         end

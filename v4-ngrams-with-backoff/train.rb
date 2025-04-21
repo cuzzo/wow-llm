@@ -1,7 +1,7 @@
 #! /usr/bin/env ruby
 
 require_relative("llm")
-require "json"
+require "msgpack"
 
 training_dir = ARGV[0]
 n = ARGV[1].to_i
