@@ -364,6 +364,6 @@ We want the LLM to be able to generate new possible names it's never seen before
 
 Over the next several versions, we will:
 
-1) Trail on larger data sets
+1) Train on larger data sets
 2) Move away from character N-Grams to token N-Grams
 3) More intelligently pick fallbacks
