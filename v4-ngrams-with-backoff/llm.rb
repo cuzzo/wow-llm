@@ -5,6 +5,23 @@ require 'set'
 class NGramLLM
   attr_reader :n, :model, :vocab
 
+  DASHES = [145, 146].map(&:chr) # em & en dash
+
+  # DO NOT INCLUDE MORE THAN 63 CHARS, AT 62 NOW.
+  CHARS = (('a'..'z').to_a + ('0'..'9').to_a + [
+        ' ', '\n', '.', ',', '"', '\'', '-',
+        '!', '?', ';', ':', '_',
+        '(', ')', 
+        '/', '\\', '|',
+        '@', '#', '$', '%', '%', '*',
+        '+', '=', '<', '>'
+      ])
+      .each_with_index
+      .map { |char, i| [char, i + 1] }
+      .to_h
+
+  ORDS = CHARS.invert
+
   # n: The order of the n-gram (e.g., 3 for trigrams)
   def initialize(n = 3)
     raise ArgumentError, "n must be at least 2" if n < 2
@@ -15,16 +32,9 @@ class NGramLLM
     @context_size = n - 1
   end
 
-  # Due to Ruby JSON formatting, the model is stored with the keys as strings
-  # However, it is expected for the keys to be integers.
-  # Here, we convert the keys from strings back into integers.
-  # This was not a problem in the previous version.
-  # The keys WERE strings, not encoded integers.
   def load(model)
-    @model = Hash[model.map do |k, v|
-      [k.to_i, Hash[v.map { |k2, v2| [k2.to_i, v2] }]]
-    end]
-    @vocab = @model.values.map { |dict| dict.keys }.flatten.uniq
+    @model = model
+    @vocab = @model.values.map { |dict| dict.keys }.flatten.to_set
   end
 
   # Train the model on a given text
@@ -111,7 +121,9 @@ class NGramLLM
     end
 
     puts "Generation complete."
-    generated_text.pack('C*')
+    generated_text
+      .map { |c| ORDS[c.to_i] || "~" }
+      .join('')
   end
 
   private
@@ -130,36 +142,38 @@ class NGramLLM
     next_options || {}
   end
 
-  # TODO: Encode and decode functions
   def tokenize(text)
-    text.downcase.bytes
-      #.map do |byte|
-      #  if byte < 145
-      #    byte
-      #  elsif byte in [145, 146] # fance single quotes
-      #    39 # single quote
-      #  elsif byte in [147, 148] # fancy quotes
-      #    22 # simple quote
-      #  elsif byte == 152 # fancy tilde
-      #    126 # tilde
-      #  elsif byte == 128 # euro sign
-      #    36 # dollar sign
-      #  elsif byte == 160 # Non-breaking space
-      #    32 # Space
-      #  else
-      #    157 # Unused / unknown
-      #  end
-      #end
+    text
+      .downcase
+      .chars
+      .map do |c| 
+        if c == "“" || c == "”"
+          c = "\""
+        elsif c == "’" || c == "‘"
+          c = "'"
+        elsif DASHES.include?(c) 
+          c = "-"
+        elsif c == "{" || c == "["
+          c = "("
+        elsif c == "}" || c == "}"
+          c = ")"
+        elsif c == "€"
+          c = "$"
+        end
+        CHARS[c] || 0
+      end
   end
 
-  # Encode an n-gram of 8-bit integers into a Bigint of arbitrary size.
+  # Encode an n-gram of 6-bit integers (ascii) into a BigInt of arbitrary size.
   def context_id(byte_context)
     result = 0
     byte_context.each_with_index do |token, idx|
       # Shift each token to its position and OR it in
-      result |= (token & 0xFF) << (idx * 8)
+      result |= (token & 0x3F) << (idx * 6)
     end
-    result
+    result < 2**64 ? 
+      result : 
+      0
   end
 
   # Helper method to make a weighted random choice from a hash of {item => weight}
