@@ -2,13 +2,14 @@ GEM
   remote: https://rubygems.org/
   specs:
     msgpack (1.8.0)
+    tokenizers (0.5.4-x86_64-linux)
 
 PLATFORMS
-  ruby
   x86_64-linux
 
 DEPENDENCIES
   msgpack (~> 1.7)
+  tokenizers (~> 0.5)
 
 BUNDLED WITH
    2.6.8
