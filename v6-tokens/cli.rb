@@ -4,17 +4,21 @@ require_relative("llm")
 require "msgpack"
 
 n = ARGV[0].to_i
-model_file = ARGV[1]
+model_file = "models/model.#{n}.msgpack"
+token_file = "models/tokens.#{n}.msgpack"
 
 puts "LOADING MODEL..."
-llm = NGramLLM.new(n)
-llm.load(MessagePack.unpack(File.read(model_file, mode: "rb")))
+llm = TokenLLM.new(n)
+llm.load(
+  MessagePack.unpack(File.read(model_file, mode: "rb")),
+  MessagePack.unpack(File.read(token_file, mode: "rb"))
+)
 
 def help()
   puts "ENTER INPUT"
-  puts "  FORMAT (N: <prompt>)"
+  puts "  FORMAT (N:T:K: <prompt>)"
   puts "  EXAMPLE"
-  puts "> 500: once there was"
+  puts "> 500:1.0:0.5: once there was"
   puts ""
   puts "ENTER .q OR .quit TO QUIT"
   puts "ENTER .h OR .help FOR HELP"
@@ -42,10 +46,10 @@ loop do
   elsif user_input.downcase == ".help" || user_input.downcase == ".h"
     help()
   else
-    token_count, prompt = user_input.split(":", 2)
+    token_count, temp, k, prompt = user_input.split(":", 4)
 
     begin 
-      generated_output = llm.generate(prompt, token_count.to_i)
+      generated_output = llm.generate(prompt.chomp, token_count.to_i, temp.to_f, k.to_f)
       puts "\n--- Generated Text ---"
       puts generated_output
       puts "----------------------"

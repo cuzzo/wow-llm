@@ -6,9 +6,8 @@ require "msgpack"
 n = ARGV[0].to_i
 model_file = ARGV[1]
 
-llm = NGramLLM.new(n)
-
 puts "LOADING MODEL..."
+llm = NGramLLM.new(n)
 llm.load(MessagePack.unpack(File.read(model_file, mode: "rb")))
 
 def help()
