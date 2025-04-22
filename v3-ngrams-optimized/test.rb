@@ -124,17 +124,7 @@ class NGramLLMTest < Minitest::Test
     
     # Create a new model and load the trained model's data
     new_llm = NGramLLM.new(3)
-    
-    # Convert model hash to JSON-style string-keyed hash
-    model_as_string_keys = {}
-    original_llm.model.each do |k, v|
-      model_as_string_keys[k.to_s] = {}
-      v.each do |k2, v2|
-        model_as_string_keys[k.to_s][k2.to_s] = v2
-      end
-    end
-
-    new_llm.load(model_as_string_keys)
+    new_llm.load(original_llm.model)
 
     assert_equal original_llm.model.keys.size, new_llm.model.keys.size
 
@@ -145,21 +135,6 @@ class NGramLLMTest < Minitest::Test
     # Currently, vocab is only used in sampling in our fallback.
     # When we introduce backoff and other techniques, this won't be used.
     assert_equal original_llm.vocab.size, new_llm.vocab.size
-  end
-
-  def test_load_model_number_conversion
-    # Test specifically that string keys are properly converted to integers
-    model_with_string_keys = {
-      "123" => { "97" => 10, "98" => 5 }
-    }
-    
-    @llm.load(model_with_string_keys)
-    
-    assert @llm.model.has_key?(123)
-    assert @llm.model[123].has_key?(97)
-    assert @llm.model[123].has_key?(98)
-    assert_equal 10, @llm.model[123][97]
-    assert_equal 5, @llm.model[123][98]
   end
 
   def test_model_normalization

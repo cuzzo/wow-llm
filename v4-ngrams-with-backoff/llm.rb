@@ -45,35 +45,25 @@ class NGramLLM
     # 1) Build vocabulary
     tokens.each { |token| @vocab.add(token) }
 
-    context = tokens[0...@context_size]
+    context = [tokens[0]]
 
     # 2) For each context, set occurence of next char
-    (tokens.length - @context_size).times do |i|
+    (1...tokens.length).each do |i|
       if i % 10_000 == 0
         puts "TRAINING: #{i} of #{tokens.length}"
       end
-      next_char = tokens[i + @context_size]
+      next_char = tokens[i]
 
       # Increment the count for this next_char given the context
       @model[context_id(context)][next_char] += 1
 
-      # Add backoff options
       c2 = context.dup
-      (@context_size - 1).times do
+      (context.length - 1).times do
         c2.shift()
         @model[context_id(c2)][next_char] += 1
       end
 
-      # Special case for the beginning of the input
-      if i == 0
-        c2 = context.dup
-        (@context_size - 1).times do
-          p_char = c2.pop()
-          @model[context_id(c2)][p_char] += 1
-        end
-      end
-
-      context.shift()
+      context.shift() if context.length == @context_size
       context.push(next_char)
     end
 
@@ -121,9 +111,8 @@ class NGramLLM
     end
 
     puts "Generation complete."
-    generated_text
-      .map { |c| ORDS[c.to_i] || "~" }
-      .join('')
+    decode(generated_text)
+
   end
 
   private
@@ -162,6 +151,12 @@ class NGramLLM
         end
         CHARS[c] || 0
       end
+  end
+
+  def decode(tokens)
+    tokens
+      .map { |c| ORDS[c.to_i] || "~" }
+      .join('')
   end
 
   # Encode an n-gram of 6-bit integers (ascii) into a BigInt of arbitrary size.

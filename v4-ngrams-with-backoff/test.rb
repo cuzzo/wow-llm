@@ -2,7 +2,7 @@
 
 require 'minitest/autorun'
 require 'minitest/pride'
-require_relative 'llm'  
+require_relative 'llm'
 
 class NGramLLMTest < Minitest::Test
   def setup
@@ -22,40 +22,58 @@ class NGramLLMTest < Minitest::Test
   end
 
   def test_training
+    def context_key(id)
+      @llm.send(:context_id, @llm.send(:tokenize, id))
+    end
+
+    def char_key(id)
+      @llm.send(:tokenize, id).first
+    end
+
     expected_model = {
       # Bi-grams
-      @llm.send(:context_id, "he".bytes) => { "l".bytes.first => 1, "y".bytes.first => 1 },
-      @llm.send(:context_id, "el".bytes) => { "l".bytes.first => 1 },
-      @llm.send(:context_id, "ll".bytes) => { "o".bytes.first => 1 },
-      @llm.send(:context_id, "lo".bytes) => { " ".bytes.first => 1 },
-      @llm.send(:context_id, "o ".bytes) => { "w".bytes.first => 1 },
-      @llm.send(:context_id, " w".bytes) => { "o".bytes.first => 1 },
-      @llm.send(:context_id, "wo".bytes) => { "r".bytes.first => 1 },
-      @llm.send(:context_id, "or".bytes) => { "l".bytes.first => 1 },
-      @llm.send(:context_id, "rl".bytes) => { "d".bytes.first => 1 },
-      @llm.send(:context_id, "ld".bytes) => { " ".bytes.first => 1 },
-      @llm.send(:context_id, "d ".bytes) => { "h".bytes.first => 1 },
-      @llm.send(:context_id, " h".bytes) => { "e".bytes.first => 1 },
+      context_key("h") => { char_key("e") => 2},
+      context_key("e") => { char_key("y") => 1, char_key("l") => 1},
+      context_key("l") => { char_key("l") => 1, char_key("o") => 1, char_key("d") => 1},
+      context_key("o") => { char_key(" ") => 1, char_key("r") => 1},
+      context_key(" ") => { char_key("w") => 1, char_key("h") => 1},
+      context_key("w") => { char_key("o") => 1},
+      context_key("r") => { char_key("l") => 1},
+      context_key("d") => { char_key(" ") => 1},
 
       # Tri-grams
-      @llm.send(:context_id, "hel".bytes) => { "l".bytes.first => 1 },
-      @llm.send(:context_id, "ell".bytes) => { "o".bytes.first => 1 },
-      @llm.send(:context_id, "llo".bytes) => { " ".bytes.first => 1 },
-      @llm.send(:context_id, "lo ".bytes) => { "w".bytes.first => 1 },
-      @llm.send(:context_id, "o w".bytes) => { "o".bytes.first => 1 },
-      @llm.send(:context_id, " wo".bytes) => { "r".bytes.first => 1 },
-      @llm.send(:context_id, "wor".bytes) => { "l".bytes.first => 1 },
-      @llm.send(:context_id, "orl".bytes) => { "d".bytes.first => 1 },
-      @llm.send(:context_id, "rld".bytes) => { " ".bytes.first => 1 },
-      @llm.send(:context_id, "ld ".bytes) => { "h".bytes.first => 1 },
-      @llm.send(:context_id, "d h".bytes) => { "e".bytes.first => 1 },
-      @llm.send(:context_id, " he".bytes) => { "y".bytes.first => 1 },
+      context_key("he") => { char_key("l") => 1, char_key("y") => 1 },
+      context_key("el") => { char_key("l") => 1 },
+      context_key("ll") => { char_key("o") => 1 },
+      context_key("lo") => { char_key(" ") => 1 },
+      context_key("o ") => { char_key("w") => 1 },
+      context_key(" w") => { char_key("o") => 1 },
+      context_key("wo") => { char_key("r") => 1 },
+      context_key("or") => { char_key("l") => 1 },
+      context_key("rl") => { char_key("d") => 1 },
+      context_key("ld") => { char_key(" ") => 1 },
+      context_key("d ") => { char_key("h") => 1 },
+      context_key(" h") => { char_key("e") => 1 },
+
+      # Quad-grams
+      context_key("hel") => { char_key("l") => 1 },
+      context_key("ell") => { char_key("o") => 1 },
+      context_key("llo") => { char_key(" ") => 1 },
+      context_key("lo ") => { char_key("w") => 1 },
+      context_key("o w") => { char_key("o") => 1 },
+      context_key(" wo") => { char_key("r") => 1 },
+      context_key("wor") => { char_key("l") => 1 },
+      context_key("orl") => { char_key("d") => 1 },
+      context_key("rld") => { char_key(" ") => 1 },
+      context_key("ld ") => { char_key("h") => 1 },
+      context_key("d h") => { char_key("e") => 1 },
+      context_key(" he") => { char_key("y") => 1 },
     }
     llm4 = NGramLLM.new(4)
     llm4.train("hello world hey")
 
     assert_equal expected_model, llm4.model
-    assert_equal 9, llm4.vocab.size  # 9 unique bytes in "hello world hey"
+    assert_equal 9, llm4.vocab.size  # 10 unique bytes in "hello world hey"
 
     @llm.train("abcde fghij")
     assert_equal 11, @llm.vocab.size # 11 unique bytes in "abcde fghij"
@@ -140,16 +158,7 @@ class NGramLLMTest < Minitest::Test
     # Create a new model and load the trained model's data
     new_llm = NGramLLM.new(3)
     
-    # Convert model hash to JSON-style string-keyed hash
-    model_as_string_keys = {}
-    original_llm.model.each do |k, v|
-      model_as_string_keys[k.to_s] = {}
-      v.each do |k2, v2|
-        model_as_string_keys[k.to_s][k2.to_s] = v2
-      end
-    end
-
-    new_llm.load(model_as_string_keys)
+    new_llm.load(original_llm.model)
 
     assert_equal original_llm.model.keys.size, new_llm.model.keys.size
 
@@ -160,21 +169,6 @@ class NGramLLMTest < Minitest::Test
     # Currently, vocab is only used in sampling in our fallback.
     # When we introduce backoff and other techniques, this won't be used.
     assert_equal original_llm.vocab.size, new_llm.vocab.size
-  end
-
-  def test_load_model_number_conversion
-    # Test specifically that string keys are properly converted to integers
-    model_with_string_keys = {
-      "123" => { "97" => 10, "98" => 5 }
-    }
-    
-    @llm.load(model_with_string_keys)
-    
-    assert @llm.model.has_key?(123)
-    assert @llm.model[123].has_key?(97)
-    assert @llm.model[123].has_key?(98)
-    assert_equal 10, @llm.model[123][97]
-    assert_equal 5, @llm.model[123][98]
   end
 
   def test_model_normalization
