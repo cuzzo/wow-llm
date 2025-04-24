@@ -1,0 +1,13 @@
+name: wow-llm 
+version: 0.1.3
+
+authors:
+  - Brian Yahn <yahn007@gmail.com> # Optional but good practice
+
+crystal: ">= 1.0.0" # Specify compatible Crystal versions (optional but recommended)
+
+license: MIT # Optional: Specify your project's license
+
+dependencies:
+  msgpack: 
+    github: crystal-community/msgpack-crystal

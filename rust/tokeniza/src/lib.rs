@@ -20,7 +20,7 @@ type Result<T> = std::result::Result<T, BoxedError>;
 // --- Internal Helper Function (Original Logic) ---
 // Note: The return type is simplified here as TokenizerImpl is complex across FFI.
 // We return a boxed Tokenizer which is easier to manage via pointers.
-fn train_internal(dir : &str) -> Result<TokenizerImpl<tokenizers::models::bpe::BPE, tokenizers::normalizers::Sequence, tokenizers::decoders::byte_level::ByteLevel, tokenizers::decoders::byte_level::ByteLevel, tokenizers::decoders::byte_level::ByteLevel>> {
+fn train_internal(dir : &str, output_path : &str) -> Result<TokenizerImpl<tokenizers::models::bpe::BPE, tokenizers::normalizers::Sequence, tokenizers::decoders::byte_level::ByteLevel, tokenizers::decoders::byte_level::ByteLevel, tokenizers::decoders::byte_level::ByteLevel>> {
     let data_dir = Path::new(dir);
     let vocab_size: usize = 4096;
     let min_frequency: u64 = 2;
@@ -77,7 +77,10 @@ fn train_internal(dir : &str) -> Result<TokenizerImpl<tokenizers::models::bpe::B
     println!("Starting BPE training on files: {:?}", training_files);
 
     // Train the tokenizer model
-    tokenizer.train_from_files(&mut trainer, training_files)?; // No need for .save here if we return the tokenizer object
+    let pretty = false;
+    tokenizer
+        .train_from_files(&mut trainer, training_files)? // No need for .save here if we return the tokenizer object
+        .save(output_path, pretty)?;
 
     println!("Training complete.");
     Ok(tokenizer) // Return the trained tokenizer directly
@@ -93,15 +96,30 @@ fn load_internal(token_file : &str) -> Result<Tokenizer> {
 /// Returns a pointer to the tokenizer object on success, or null on error.
 /// The caller is responsible for freeing the tokenizer using `rust_tokenizer_free`.
 #[unsafe(no_mangle)]
-pub extern "C" fn rust_tokenizer_train(dir_path: *const c_char) -> *mut Tokenizer {
+pub extern "C" fn rust_tokenizer_train(dir_path: *const c_char, output_file : *const c_char) -> *mut Tokenizer {
     if dir_path.is_null() {
         eprintln!("rust_tokenizer_train: received null directory path");
         return ptr::null_mut();
     }
     let dir_cstr = unsafe { CStr::from_ptr(dir_path) };
+
+    let output_file_cstr: &CStr = unsafe {
+        CStr::from_ptr(output_file)
+    };
+
+    let output_file_str: &str = match output_file_cstr.to_str() {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("FFI Error: Failed to convert output_file C string to UTF-8: {}", e);
+            // Handle the UTF-8 conversion error
+            return ptr::null_mut();
+        }
+    };
+
+
     match dir_cstr.to_str() {
         Ok(dir_str) => {
-            match train_internal(dir_str) {
+            match train_internal(dir_str, output_file_str) {
                 Ok(tokenizer) => Box::into_raw(Box::new(tokenizer.into())),
                 Err(e) => {
                     eprintln!("rust_tokenizer_train: failed: {}", e);

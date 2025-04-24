@@ -2,7 +2,9 @@ require "set"
 require "msgpack"
 require "io/memory"
 
-alias Token = UInt32
+require "./tokeniza_bindings"
+
+alias Token = UInt16
 alias ContextId = UInt128
 alias Options = Hash(Token, Int64)
 alias WeightedOptions = Hash(Token, Float64)
@@ -18,20 +20,19 @@ class NGramLLM
   @context_size : Int32
   @context_mask : ContextId
   @weights : Array(Float64)
-  @next_token_id : Token
-  @token_to_id : Hash(String, Token)
-  @id_to_token : Hash(Token, String)
+  @tokenizer : RustTokenizerInterface
 
   DASHES = [150, 151].map { |c| c.chr } # em & en dash
   PARAGRAPH = "[PARAGRAPH]"
-  TOKEN_BITS = 32
+  TOKEN_BITS = 12
   CONTEXT_BITS = 128
 
   # --- Initialization ---
+  # token_file: The path to the BPETokenizer json file
   # n: The order of the n-gram (e.g., 3 for trigrams)
-  def initialize(@n = 3)
+  def initialize(@tokenizer, @n = 3)
     raise ArgumentError.new("n must be at least 2") if @n < 2
-    raise ArgumentError.new("n is temporarily limited to 5") if @n > 5
+    raise ArgumentError.new("n is temporarily limited to 11") if @n > 11
 
     @context_size = @n - 1
     @context_mask = ContextId::MAX >> (CONTEXT_BITS - (@context_size * TOKEN_BITS))
@@ -44,41 +45,28 @@ class NGramLLM
       h[k] = Options.new(0_i64)
     end
 
-    @next_token_id = 1
-    @token_to_id = Hash(String, Token).new(0_u32)
-    @id_to_token = Hash(Token, String).new("")
-
     # Initialize the vocabulary set
     @vocab = Set(Token).new
   end
 
-  def save(model_file, token_file)
+  def save(model_file)
     File.write(model_file, MessagePack.pack(get_storage_model()), mode: "wb")
-    File.write(token_file, MessagePack.pack(@token_to_id), mode: "wb")
   end
 
-  def load(model_file, token_file)
+  def load(model_file)
     all_bytes = File.open(model_file, "rb") do |file|
       io_memory = IO::Memory.new
       IO.copy(file, io_memory)
       io_memory.to_slice
     end
     @model = convert_storage_model(StorableModel.from_msgpack(all_bytes))
-
-    all_bytes = File.open(token_file, "rb") do |file|
-      io_memory = IO::Memory.new
-      IO.copy(file, io_memory)
-      io_memory.to_slice
-    end
-    @token_to_id = Hash(String, Token).from_msgpack(all_bytes)
-    @id_to_token = @token_to_id.invert
-    @vocab = @id_to_token.keys.to_set
+    @vocab = @model.values.map { |dict| dict.keys }.flatten.to_set
   end
 
   # --- Training ---
   # Train the model on a given text string.
   def train(text : String)
-    tokens = tokenize(text)
+    tokens = @tokenizer.encode(text).map { |t| t.to_u16 }
 
     # 1) Build vocabulary
     tokens.each { |token| @vocab.add(token) }
@@ -123,7 +111,7 @@ class NGramLLM
     raise "Prompt must be at least #{@context_size} characters long" if prompt.size < @context_size
 
     # Start with the prompt (normalized to downcase)
-    generated_text = tokenize(prompt)
+    generated_text = @tokenizer.encode(prompt).map { |t| t.to_u16 }
 
     tokens = Array(Token).new(generated_text.size + length)
     tokens.concat(generated_text)
@@ -149,7 +137,7 @@ class NGramLLM
     end
 
     puts "Generation complete."
-    detokenize(tokens)
+    @tokenizer.decode(tokens.map { |t| t.to_u32 } )
   end
 
   # --- Private Helper Methods ---
@@ -253,57 +241,7 @@ class NGramLLM
   # Pick a random character from the entire vocabulary.
   private def fallback(cc_id : ContextId) : Token?
     STDERR.puts "Warning: Context '#{cc_id}' not found or has no successors in model. Choosing random character."
-
     @vocab.to_a.sample
-  end
-
-  private def tokenize(input : String) : Array(Token)
-    input
-      .downcase
-      .chars
-      .map do |c| 
-        if c == '“' || c == '”'
-          c = '"'
-        elsif c == '’' || c == '‘'
-          c = '\''
-        elsif DASHES.includes?(c)
-          c = '-'
-        elsif c == '—'
-          c = '-'
-        elsif c == '{' || c == '['
-          c = '('
-        elsif c == '}' || c == '}'
-          c = ')'
-        elsif c == '€'
-          c = '$'
-        end
-        c
-      end
-      .join("")
-      .gsub(/([a-z])'([a-z])/, "\1 ' \2") # handle contractions
-      .gsub(/([.,!?;:()\[\]{}""''…`_-])/, " \1 ") # handle punctation
-      .gsub(/(\d) \. (\d)/, "\1.\2") # handle numbers
-      .gsub(/\s*\n+\s*/, " #{PARAGRAPH} ")
-      .split(/\s+/)
-      .map { |token| get_token_id(token) }
-  end
-
-  private def detokenize(token_ids : Array(Token)) : String
-    token_ids
-      .map { |id| @id_to_token[id] }
-      .join(" ")
-  end
-
-  # Convert a token to an ID (or assign a new ID if not seen before)
-  def get_token_id(token : String)
-    unless @token_to_id.has_key?(token)
-      @token_to_id[token] = @next_token_id
-      @id_to_token[@next_token_id] = token
-      @vocab.add(@next_token_id)
-      @next_token_id += 1
-      raise "Token overlfow, too many tokens, >2^16 unique tokens." if @next_token_id > 2**16
-    end
-    @token_to_id[token]
   end
 
   private def fmt_context_id(cc_id : ContextId) : Array(Token)
