@@ -49,7 +49,7 @@ class NGramLLM
 
     # 2) For each context, set occurence of next char
     (1...tokens.length).each do |i|
-      if i % 10_000 == 0
+      if i % 100_000 == 0
         puts "TRAINING: #{i} of #{tokens.length}"
       end
       next_char = tokens[i]
