@@ -1,0 +1,10 @@
+[package]
+name = "tokeniza"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokenizers = "0.21.1"  # Use the latest appropriate version from crates.io
+serde = { version = "1.0", features = ["derive"] } # For serialization logic used internally and by us
+serde_json = "1.0" # For writing JSON files
+thiserror = "1.0" # Optional: For cleaner error handling (alternative to Box<dyn Error>)
