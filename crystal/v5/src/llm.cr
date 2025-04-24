@@ -18,7 +18,7 @@ class NGramLLM
 
     @context_size = @n - 1
     @context_mask = UInt64::MAX >> (64 - (@context_size * 8))
-    @weights = _weights(2.5)
+    @weights = _weights(30.0)
 
     # Initialize the nested hash:
     # The outer hash maps String context to the inner Hash.
