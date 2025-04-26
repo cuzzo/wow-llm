@@ -153,7 +153,7 @@ class TestNNLM < Minitest::Test
 
     # All probabilities should be between 0 and 1
     result[:probabilities].each do |prob|
-      assert prob >= 0.0 && prob <= 1.0, "Probability should be between 0 and 1"
+      assert prob.between?(0.0, 1.0), "Probability should be between 0 and 1"
     end
   end
 
@@ -162,7 +162,7 @@ class TestNNLM < Minitest::Test
 
     # tanh values should be between -1 and 1
     result[:hidden_activation].each do |val|
-      assert val >= -1.0 && val <= 1.0, "Hidden activation should be between -1 and 1"
+      assert val.between?(-1.0, 1.0), "Hidden activation should be between -1 and 1"
     end
   end
 
