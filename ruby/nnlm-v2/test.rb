@@ -2,8 +2,9 @@
 
 require 'minitest/autorun'
 require 'minitest/pride' # Optional: Colorized output
+require 'numo/narray'
 require 'cmath'
-require 'set' 
+require 'set'
 
 require 'byebug'
 
@@ -15,8 +16,8 @@ module Minitest::Assertions
   # Asserts that two arrays (vectors) of floats are element-wise equal within a delta.
   def assert_vector_in_delta(expected_vec, actual_vec, delta = 1e-6, msg = nil)
     msg ||= "Expected vectors to be element-wise equal within delta #{delta}"
-    assert_equal(expected_vec.size, actual_vec.size, "#{msg} (different sizes)")
-    expected_vec.zip(actual_vec).each_with_index do |(exp, act), i|
+    assert_equal(expected_vec.shape, actual_vec.shape, "#{msg} (different sizes)")
+    expected_vec.to_a.zip(actual_vec.to_a).each_with_index do |(exp, act), i|
       assert_in_delta(exp, act, delta, "#{msg} (difference at index #{i})")
     end
   end
@@ -24,9 +25,9 @@ module Minitest::Assertions
   # Asserts that two nested arrays (matrices) of floats are element-wise equal within a delta.
   def assert_matrix_in_delta(expected_mat, actual_mat, delta = 1e-6, msg = nil)
     msg ||= "Expected matrices to be element-wise equal within delta #{delta}"
-    assert_equal(expected_mat.size, actual_mat.size, "#{msg} (different number of rows)")
-    expected_mat.each_with_index do |expected_row, i|
-      assert_vector_in_delta(expected_row, actual_mat[i], delta, "#{msg} (difference in row #{i})")
+    assert_equal(expected_mat.shape, actual_mat.shape, "#{msg} (different number of rows)")
+    expected_mat.shape.first.times do |i|
+      assert_vector_in_delta(expected_mat[i, true], actual_mat[i, true], delta, "#{msg} (difference in row #{i})")
     end
   end
 
@@ -76,33 +77,33 @@ class TestNNLM < Minitest::Test
     # Use simple values for easy manual calculation/verification.
     # Note: Hashes need default procs if they might be accessed with unknown keys during tests,
     # but here we ensure accesses are within the initialized keys.
-    embeddings = {
-      0 => [0.0, 0.0],          # [PAD] embedding (often zeros)
-      1 => [0.1, 0.2],          # hello
-      2 => [0.3, -0.1],         # world
-      3 => [0.2, 0.4],          # foo
-      4 => [-0.2, 0.1]          # bar
-    }
+    embeddings = Numo::DFloat[
+      [0.0, 0.0],          # [PAD] embedding (often zeros)
+      [0.1, 0.2],          # hello
+      [0.3, -0.1],         # world
+      [0.2, 0.4],          # foo
+      [-0.2, 0.1]          # bar
+    ]
     input_concat_size = @context_size * @embedding_dim # 2 * 2 = 4
 
     # Dimensions: input_concat_size x hidden_size (4 x 3)
-    w_h = [
+    w_h = Numo::DFloat[
       [0.1, 0.2, 0.3],
       [-0.1, 0.3, 0.1],
       [0.4, -0.2, 0.2],
       [0.2, 0.1, -0.3]
     ]
     # Dimensions: hidden_size (3)
-    b_h = [0.05, -0.05, 0.1]
+    b_h = Numo::DFloat[0.05, -0.05, 0.1]
 
     # Dimensions: hidden_size x vocab_size (3 x 5)
-    w_o = [
+    w_o = Numo::DFloat[
       [0.2, 0.1, -0.1, 0.3, 0.4],
       [-0.2, 0.4, 0.2, -0.1, 0.1],
       [0.3, -0.3, 0.1, 0.2, -0.2]
     ]
     # Dimensions: vocab_size (5)
-    b_o = [0.1, 0.0, -0.1, 0.2, 0.05]
+    b_o = Numo::DFloat[0.1, 0.0, -0.1, 0.2, 0.05]
 
     @nnlm.instance_variable_set(:@embeddings, embeddings)
     @nnlm.instance_variable_set(:@W_h, w_h)
@@ -111,21 +112,19 @@ class TestNNLM < Minitest::Test
     @nnlm.instance_variable_set(:@b_o, b_o)
 
     # --- Define and Store Initial Fixed Parameters as INSTANCE Variables ---
-    @initial_embeddings = {
-      0 => [0.0, 0.0], 1 => [0.1, 0.2], 2 => [0.3, -0.1], 3 => [0.2, 0.4], 4 => [-0.2, 0.1]
-    }
-    @initial_W_h = [ [0.1, 0.2, 0.3], [-0.1, 0.3, 0.1], [0.4, -0.2, 0.2], [0.2, 0.1, -0.3] ]
-    @initial_b_h = [0.05, -0.05, 0.1]
-    @initial_W_o = [ [0.2, 0.1, -0.1, 0.3, 0.4], [-0.2, 0.4, 0.2, -0.1, 0.1], [0.3, -0.3, 0.1, 0.2, -0.2] ]
-    @initial_b_o = [0.1, 0.0, -0.1, 0.2, 0.05]
+    @initial_embeddings = Marshal.load(Marshal.dump(embeddings))
+    @initial_W_h = w_h.copy
+    @initial_b_h = b_h.copy
+    @initial_W_o = w_o.copy
+    @initial_b_o = b_o.copy
 
     # --- Set NNLM's state using DEEP COPIES of the initial parameters ---
     # This ensures the @nnlm instance can be modified without affecting @initial_* vars
     @nnlm.instance_variable_set(:@embeddings, Marshal.load(Marshal.dump(@initial_embeddings)))
-    @nnlm.instance_variable_set(:@W_h, Marshal.load(Marshal.dump(@initial_W_h)))
-    @nnlm.instance_variable_set(:@b_h, Marshal.load(Marshal.dump(@initial_b_h)))
-    @nnlm.instance_variable_set(:@W_o, Marshal.load(Marshal.dump(@initial_W_o)))
-    @nnlm.instance_variable_set(:@b_o, Marshal.load(Marshal.dump(@initial_b_o)))
+    @nnlm.instance_variable_set(:@W_h, @initial_W_h.copy)
+    @nnlm.instance_variable_set(:@b_h, @initial_b_h.copy)
+    @nnlm.instance_variable_set(:@W_o, @initial_W_o.copy)
+    @nnlm.instance_variable_set(:@b_o, @initial_b_o.copy)
 
     # --- Define Fixed Input for Tests ---
     # Context: "hello world" -> indices [1, 2]
@@ -142,7 +141,7 @@ class TestNNLM < Minitest::Test
     # The input layer should be the concatenation of the embeddings for "hello" and "world"
     # [0.1, 0.2] = features / dims of "hello"
     # [0.3, -0.1] = features / dims of "world"
-    expected_input = [0.1, 0.2, 0.3, -0.1]
+    expected_input = Numo::DFloat[0.1, 0.2, 0.3, -0.1]
     assert_equal expected_input, result[:input_layer]
   end
   
@@ -183,7 +182,7 @@ class TestNNLM < Minitest::Test
     result_with_pads = @nnlm.forward([0, 0])  # [PAD], [PAD]
     
     # Input layer should be all zeros
-    assert_equal Array.new(@context_size * @embedding_dim, 0.0), result_with_pads[:input_layer]
+    assert_equal Numo::DFloat.cast([0] * (@context_size * @embedding_dim)), result_with_pads[:input_layer]
     
     # Compare with non-pad result
     result_with_words = @nnlm.forward([1, 2])  # hello, world
@@ -208,7 +207,7 @@ class TestNNLM < Minitest::Test
 
     # --- 1. Expected Projection/Concatenation ---
     # Embeddings for indices 1 and 2 are [0.1, 0.2] and [0.3, -0.1]
-    expected_input_layer = [0.1, 0.2, 0.3, -0.1]
+    expected_input_layer = Numo::DFloat[0.1, 0.2, 0.3, -0.1]
     puts "Expected Input Layer (Concatenated Embeddings): #{expected_input_layer.inspect}"
 
     # --- 2. Expected Hidden Layer Input ---
@@ -221,7 +220,7 @@ class TestNNLM < Minitest::Test
     # = [0.09, 0.01, 0.14]
     # Add bias b_h = [0.05, -0.05, 0.1]
     # hidden_input = [0.09+0.05, 0.01-0.05, 0.14+0.1] = [0.14, -0.04, 0.24]
-    expected_hidden_input = [0.14, -0.04, 0.24]
+    expected_hidden_input = Numo::DFloat[0.14, -0.04, 0.24]
     puts "Expected Hidden Input (Before Tanh): #{expected_hidden_input.inspect}"
 
     # --- 3. Expected Hidden Layer Activation (Tanh) ---
@@ -272,9 +271,9 @@ class TestNNLM < Minitest::Test
     context_indices = [1, 2]  # "hello", "world"
     target_index = 3  # "foo"
     forward_data = {
-      probabilities: [0.2, 0.1, 0.1, 0.2, 0.3],
-      hidden_activation: [0.1, -0.1, 0.2],
-      input_layer: [0.1, 0.2, 0.3, -0.1]
+      probabilities: Numo::DFloat[0.2, 0.1, 0.1, 0.2, 0.3],
+      hidden_activation: Numo::DFloat[0.1, -0.1, 0.2],
+      input_layer: Numo::DFloat[0.1, 0.2, 0.3, -0.1]
     }
 
     gradients = @nnlm.backward(context_indices, target_index, forward_data)
@@ -287,7 +286,7 @@ class TestNNLM < Minitest::Test
     end
     
     # Words not in context should not have gradients
-    all_word_idxs = @nnlm.instance_variable_get(:@embeddings).keys
+    all_word_idxs = @nnlm.instance_variable_get(:@embeddings).shape.first.times.to_a
     unused_idxs = (all_word_idxs - context_indices)
     unused_idxs.each do |idx|
       assert_equal gradients[:grad_embeddings][idx], [0.0, 0.0]
@@ -309,9 +308,9 @@ class TestNNLM < Minitest::Test
     context_indices = [1, 2]  # "hello", "world"
     target_index = 3  # "foo"
     forward_data = {
-      probabilities: [0.2, 0.1, 0.1, 0.2, 0.3], # softmax guarantees probabilities are positive
-      hidden_activation: [0.1, -0.1, 0.2],
-      input_layer: [0.1, 0.2, 0.3, -0.1]
+      probabilities: Numo::DFloat[0.2, 0.1, 0.1, 0.2, 0.3], # softmax guarantees probabilities are positive
+      hidden_activation: Numo::DFloat[0.1, -0.1, 0.2],
+      input_layer: Numo::DFloat[0.1, 0.2, 0.3, -0.1]
     }
 
     # When target is "foo" (index 3), the error for "foo" should be negative
@@ -328,7 +327,7 @@ class TestNNLM < Minitest::Test
            "Error for target word should be negative (want higher probability)"
     
     # Error for at least one non-target word should be positive (want lower probability)
-    non_target_errors = output_errors.each_with_index.select { |_, i| i != target_index }.map(&:first)
+    non_target_errors = output_errors.to_a.each_with_index.select { |_, i| i != target_index }.map(&:first)
     assert non_target_errors.any? { |e| e > 0 }, 
            "Error for at least one non-target word should be positive"
   end
@@ -340,9 +339,9 @@ class TestNNLM < Minitest::Test
     context_indices = [1, 2]  # "hello", "world"
     target_index = 3  # "foo"
     forward_data = {
-      probabilities: [0.2, 0.1, 0.1, 0.2, 0.3], # softmax guarantees probabilities are positive
-      hidden_activation: [0.1, -0.1, 0.2],
-      input_layer: [0.1, 0.2, 0.3, -0.1]
+      probabilities: Numo::DFloat[0.2, 0.1, 0.1, 0.2, 0.3], # softmax guarantees probabilities are positive
+      hidden_activation: Numo::DFloat[0.1, -0.1, 0.2],
+      input_layer: Numo::DFloat[0.1, 0.2, 0.3, -0.1]
     }
 
     # When target is "foo" (index 3), the error for "foo" should be negative
@@ -361,7 +360,7 @@ class TestNNLM < Minitest::Test
       next if activation.abs < DELTA
  
       # --- Check column for the TARGET word (index 3) ---
-      grad_target = output_errors[h_idx][target_index]
+      grad_target = output_errors[h_idx, target_index]
  
       # If activation is positive, gradient should be negative (to increase W_o)
       # If activation is negative, gradient should be positive (to decrease W_o, making it less negative)
@@ -369,9 +368,9 @@ class TestNNLM < Minitest::Test
       assert activation * grad_target <= 0,
              "grad_W_o[#{h_idx}][#{target_index}] sign should oppose hidden_activation[#{h_idx}] sign"
  
-      non_target_idxs = (@nnlm.instance_variable_get(:@embeddings).keys - [target_index])
+      non_target_idxs = (@nnlm.instance_variable_get(:@embeddings).shape.first.times.to_a - [target_index])
       non_target_idxs.each do |non_target_idx|
-        grad_non_target = output_errors[h_idx][non_target_idx]
+        grad_non_target = output_errors[h_idx, non_target_idx]
  
         # If activation is positive, gradient should be positive (to decrease W_o)
         # If activation is negative, gradient should be negative (to increase W_o, making it less negative)
@@ -389,15 +388,15 @@ class TestNNLM < Minitest::Test
     context_indices = [1, 2]  # "hello", "world"
     target_index = 3  # "foo"
     forward_data = {
-      probabilities: [0.0, 0.0, 0.0, 1.0, 0.0],
-      hidden_activation: [0.1, -0.1, 0.2],
-      input_layer: [0.1, 0.2, 0.3, -0.1]
+      probabilities: Numo::DFloat[0.0, 0.0, 0.0, 1.0, 0.0], # softmax guarantees probabilities are positive
+      hidden_activation: Numo::DFloat[0.1, -0.1, 0.2],
+      input_layer: Numo::DFloat[0.1, 0.2, 0.3, -0.1]
     }
     
     gradients = @nnlm.backward(context_indices, target_index, forward_data)
     
     # Output bias gradients should be zeros (probabilities - target_one_hot = 0)
-    assert_equal Array.new(@nnlm.instance_variable_get(:@vocab_size), 0.0), gradients[:grad_b_o],
+    assert_equal Numo::DFloat.cast([0.0] * @nnlm.instance_variable_get(:@vocab_size)), gradients[:grad_b_o],
                 "Output bias gradients should be zero when prediction is perfect"
   end
   
@@ -405,16 +404,16 @@ class TestNNLM < Minitest::Test
     context_indices = [1, 2]  # "hello", "world"
     target_index = 3  # "foo"
     forward_data = {
-      probabilities: [0.2, 0.1, 0.1, 0.2, 0.3], # softmax guarantees probabilities are positive
-      hidden_activation: [0.1, -0.1, 0.2],
-      input_layer: [0.1, 0.2, 0.3, -0.1]
+      probabilities: Numo::DFloat[0.2, 0.1, 0.1, 0.2, 0.3], # softmax guarantees probabilities are positive
+      hidden_activation: Numo::DFloat[0.1, -0.1, 0.2],
+      input_layer: Numo::DFloat[0.1, 0.2, 0.3, -0.1]
     }
 
     gradients = @nnlm.backward(context_indices, target_index, forward_data)
     
     # Helper to check if a matrix has any non-zero elements
     def has_non_zero?(matrix)
-      matrix.flatten.any? { |x| x != 0 }
+      matrix.flatten.to_a.any? { |x| x != 0 }
     end
     
     # All gradient matrices should have at least some non-zero values
@@ -431,9 +430,9 @@ class TestNNLM < Minitest::Test
   def test_backward_with_different_targets_produces_different_gradients
     context_indices = [1, 2]  # "hello", "world"
     forward_data = {
-      probabilities: [0.2, 0.1, 0.1, 0.2, 0.3], # softmax guarantees probabilities are positive
-      hidden_activation: [0.1, -0.1, 0.2],
-      input_layer: [0.1, 0.2, 0.3, -0.1]
+      probabilities: Numo::DFloat[0.2, 0.1, 0.1, 0.2, 0.3], # softmax guarantees probabilities are positive
+      hidden_activation: Numo::DFloat[0.1, -0.1, 0.2],
+      input_layer: Numo::DFloat[0.1, 0.2, 0.3, -0.1]
     }
 
     # Compare gradients when target is "foo" vs "bar"
@@ -451,9 +450,9 @@ class TestNNLM < Minitest::Test
     context_indices = [1, 2]  # "hello", "world"
     target_index = 3
     forward_data = {
-      probabilities: [0.2, 0.1, 0.1, 0.2, 0.3], # softmax guarantees probabilities are positive
-      hidden_activation: [0.1, -0.1, 0.2],
-      input_layer: [0.1, 0.2, 0.3, -0.1]
+      probabilities: Numo::DFloat[0.2, 0.1, 0.1, 0.2, 0.3], # softmax guarantees probabilities are positive
+      hidden_activation: Numo::DFloat[0.1, -0.1, 0.2],
+      input_layer: Numo::DFloat[0.1, 0.2, 0.3, -0.1]
     }
 
     # Run backward twice with same inputs
@@ -494,7 +493,7 @@ class TestNNLM < Minitest::Test
 
     # grad_W_o = outer_product(hidden_activation, d_output_scores) (hidden_size x vocab_size) -> (3 x 5)
     expected_grad_w_o = @nnlm.outer_product(hidden_activation, expected_d_output_scores)
-    puts "Expected grad_W_o (shape #{expected_grad_w_o.size}x#{expected_grad_w_o[0].size}): #{expected_grad_w_o.inspect}"
+    puts "Expected grad_W_o (shape #{expected_grad_w_o.shape}x#{expected_grad_w_o.shape}): #{expected_grad_w_o.inspect}"
 
     # --- 3. Expected Gradient w.r.t Hidden Activation Input Signal ---
     # d_hidden_input_signal = d_output_scores * W_o^T
@@ -517,7 +516,7 @@ class TestNNLM < Minitest::Test
 
     # grad_W_h = outer_product(input_layer, d_hidden_input) (input_concat_size x hidden_size) -> (4 x 3)
     expected_grad_w_h = @nnlm.outer_product(input_layer, expected_d_hidden_input)
-    puts "Expected grad_W_h (shape #{expected_grad_w_h.size}x#{expected_grad_w_h[0].size}): #{expected_grad_w_h.inspect}"
+    puts "Expected grad_W_h (shape #{expected_grad_w_h.shape}x#{expected_grad_w_h.shape}): #{expected_grad_w_h.inspect}"
 
     # --- 6. Expected Gradient w.r.t Input Layer (d_input_layer) ---
     # d_input_layer = d_hidden_input * W_h^T
@@ -529,14 +528,14 @@ class TestNNLM < Minitest::Test
     # --- 7. Expected Gradients for Embeddings ---
     # Distribute d_input_layer back to the embeddings used in the context
     # Context indices were [1, 2]
-    expected_grad_embeddings = Hash.new { |h, k| h[k] = Array.new(@embedding_dim, 0.0) }
+    expected_grad_embeddings = Hash.new { |h, k| h[k] = Numo::DFloat.cast([0.0] * @embedding_dim) }
     context_indices = @test_context_indices
     context_indices.each_with_index do |word_ix, i|
-       start_idx = i * @embedding_dim
-       end_idx = start_idx + @embedding_dim - 1
-       embedding_grad_slice = expected_d_input_layer[start_idx..end_idx]
-       # Important: Use add_vectors for accumulation if the same index appeared multiple times
-       expected_grad_embeddings[word_ix] = @nnlm.add_vectors(expected_grad_embeddings[word_ix], embedding_grad_slice)
+      start_idx = i * @embedding_dim
+      end_idx = start_idx + @embedding_dim - 1
+      embedding_grad_slice = expected_d_input_layer[start_idx..end_idx]
+      # Important: Use add_vectors for accumulation if the same index appeared multiple times
+      expected_grad_embeddings[word_ix] = @nnlm.add_vectors(expected_grad_embeddings[word_ix], embedding_grad_slice)
     end
     puts "Expected grad_embeddings: #{expected_grad_embeddings.inspect}"
 
@@ -571,7 +570,6 @@ class TestNNLM < Minitest::Test
     puts "--- Backward Pass Test Complete ---"
   end
 
-
   # process idx=2 (hello), should update all unique words in the context_size (2) = (hello, world)
   def test_process_context_hello
     padded_sentence = [0, 0, 1, 2, 3, 4] # pad, pad, hello, world, foo, bar
@@ -593,12 +591,12 @@ class TestNNLM < Minitest::Test
     post_embeddings = @nnlm.instance_variable_get(:@embeddings).dup
     post_pred = @nnlm.forward(predict_sentence)[:probabilities]
 
-    assert_equal initial_embeddings[t_pad_idx], post_embeddings[t_pad_idx] # pad should be unchanged
-    assert_equal initial_embeddings[t_foo_idx], post_embeddings[t_foo_idx] # foo should be unchanged
-    assert_equal initial_embeddings[t_bar_idx], post_embeddings[t_bar_idx] # bar should be unchanged
+    assert_equal initial_embeddings[t_pad_idx, true], post_embeddings[t_pad_idx, true] # pad should be unchanged
+    assert_equal initial_embeddings[t_foo_idx, true], post_embeddings[t_foo_idx, true] # foo should be unchanged
+    assert_equal initial_embeddings[t_bar_idx, true], post_embeddings[t_bar_idx, true] # bar should be unchanged
 
-    refute_equal initial_embeddings[t_hello_idx], post_embeddings[t_hello_idx] # hello should be unchanged
-    refute_equal initial_embeddings[t_world_idx], post_embeddings[t_world_idx] # hello should be unchanged
+    refute_equal initial_embeddings[t_hello_idx, true], post_embeddings[t_hello_idx, true] # hello should be unchanged
+    refute_equal initial_embeddings[t_world_idx, true], post_embeddings[t_world_idx, true] # hello should be unchanged
 
     assert post_pred[t_pad_idx] <= initial_pred[t_pad_idx] # probability of picking pad decreased
     assert post_pred[t_hello_idx] <= initial_pred[t_hello_idx] # probability of picking hello decreased
@@ -632,12 +630,12 @@ class TestNNLM < Minitest::Test
       post_embeddings = @nnlm.instance_variable_get(:@embeddings).dup
       post_pred = @nnlm.forward(predict_sentence)[:probabilities]
 
-      assert_equal initial_embeddings[t_pad_idx], post_embeddings[t_pad_idx] # pad should be unchanged
-      assert_equal initial_embeddings[t_foo_idx], post_embeddings[t_foo_idx] # foo should be unchanged
-      assert_equal initial_embeddings[t_bar_idx], post_embeddings[t_bar_idx] # bar should be unchanged
+      assert_equal initial_embeddings[t_pad_idx, true], post_embeddings[t_pad_idx, true] # pad should be unchanged
+      assert_equal initial_embeddings[t_foo_idx, true], post_embeddings[t_foo_idx, true] # foo should be unchanged
+      assert_equal initial_embeddings[t_bar_idx, true], post_embeddings[t_bar_idx, true] # bar should be unchanged
 
-      refute_equal initial_embeddings[t_hello_idx], post_embeddings[t_hello_idx] # hello should be unchanged
-      refute_equal initial_embeddings[t_world_idx], post_embeddings[t_world_idx] # hello should be unchanged
+      refute_equal initial_embeddings[t_hello_idx, true], post_embeddings[t_hello_idx, true] # hello should be unchanged
+      refute_equal initial_embeddings[t_world_idx, true], post_embeddings[t_world_idx, true] # hello should be unchanged
 
       assert post_pred[t_pad_idx] <= initial_pred[t_pad_idx] # probability of picking pad decreased
       assert post_pred[t_hello_idx] <= initial_pred[t_hello_idx] # probability of picking hello decreased
@@ -669,12 +667,12 @@ class TestNNLM < Minitest::Test
     post_embeddings = @nnlm.instance_variable_get(:@embeddings).dup
     post_pred = @nnlm.forward(predict_sentence)[:probabilities]
 
-    assert_equal initial_embeddings[t_foo_idx], post_embeddings[t_foo_idx] # foo should be ununchanged
-    assert_equal initial_embeddings[t_bar_idx], post_embeddings[t_bar_idx] # bar should be unchanged
-    assert_equal initial_embeddings[t_hello_idx], post_embeddings[t_hello_idx] # hello should be unchanged
-    assert_equal initial_embeddings[t_world_idx], post_embeddings[t_world_idx] # hello should be unchanged
+    assert_equal initial_embeddings[t_foo_idx, true], post_embeddings[t_foo_idx, true] # foo should be ununchanged
+    assert_equal initial_embeddings[t_bar_idx, true], post_embeddings[t_bar_idx, true] # bar should be unchanged
+    assert_equal initial_embeddings[t_hello_idx, true], post_embeddings[t_hello_idx, true] # hello should be unchanged
+    assert_equal initial_embeddings[t_world_idx, true], post_embeddings[t_world_idx, true] # hello should be unchanged
 
-    refute_equal initial_embeddings[t_pad_idx], post_embeddings[t_pad_idx] # pad should be changed
+    refute_equal initial_embeddings[t_pad_idx, true], post_embeddings[t_pad_idx, true] # pad should be changed
 
     assert post_pred[t_pad_idx] <= initial_pred[t_pad_idx] # probability of picking pad decreased
     assert post_pred[t_world_idx] <= initial_pred[t_world_idx] # probability of picking world decreased
@@ -710,23 +708,17 @@ class TestNNLM < Minitest::Test
 
     expected_embeddings = Marshal.load(Marshal.dump(@initial_embeddings))
     expected_gradients[:grad_embeddings].each do |word_ix, grad|
-      expected_embeddings[word_ix] = @nnlm.subtract_vectors(expected_embeddings[word_ix], @nnlm.scalar_multiply(lr, grad))
+      expected_embeddings[word_ix, true] -= lr * grad
     end
 
-    expected_W_h = @initial_W_h.map.with_index do |row, i|
-      @nnlm.subtract_vectors(row, @nnlm.scalar_multiply(lr, expected_gradients[:grad_W_h][i]))
-    end
-    expected_b_h = @nnlm.subtract_vectors(@initial_b_h, @nnlm.scalar_multiply(lr, expected_gradients[:grad_b_h]))
-
-    expected_W_o = @initial_W_o.map.with_index do |row, i|
-      @nnlm.subtract_vectors(row, @nnlm.scalar_multiply(lr, expected_gradients[:grad_W_o][i]))
-    end
-    expected_b_o = @nnlm.subtract_vectors(@initial_b_o, @nnlm.scalar_multiply(lr, expected_gradients[:grad_b_o]))
+    expected_W_h = @initial_W_h - (lr * expected_gradients[:grad_W_h])
+    expected_b_h = @initial_b_h - (lr * expected_gradients[:grad_b_h])
+    expected_W_o = @initial_W_o - (lr * expected_gradients[:grad_W_o])
+    expected_b_o = @initial_b_o - (lr * expected_gradients[:grad_b_o])
 
     puts "Initial b_h: #{@initial_b_h.inspect}"
     puts "Expected grad_b_h: #{expected_gradients[:grad_b_h].inspect}"
     puts "Expected final b_h: #{expected_b_h.inspect}"
-
 
     # --- Act ---
     # Call process_context with the test sentence and index
@@ -749,7 +741,7 @@ class TestNNLM < Minitest::Test
     actual_b_o = @nnlm.instance_variable_get(:@b_o)
 
     # Compare actual parameters with the expected final parameters
-    assert_embedding_hash_in_delta expected_embeddings, actual_embeddings, DELTA, "Embeddings mismatch after update"
+    assert_matrix_in_delta expected_embeddings, actual_embeddings, DELTA, "Embeddings mismatch after update"
     puts "Embeddings Update OK"
 
     assert_matrix_in_delta expected_W_h, actual_W_h, DELTA, "W_h mismatch after update"
@@ -763,8 +755,8 @@ class TestNNLM < Minitest::Test
     puts "b_o Update OK"
 
     # Sanity check: ensure embeddings not part of the context gradient didn't change
-    assert_vector_in_delta @initial_embeddings[0], actual_embeddings[0], DELTA, "Embedding for index 0 (PAD) should not change"
-    assert_vector_in_delta @initial_embeddings[4], actual_embeddings[4], DELTA, "Embedding for index 4 (bar) should not change"
+    assert_vector_in_delta @initial_embeddings[0, true], actual_embeddings[0, true], DELTA, "Embedding for index 0 (PAD) should not change"
+    assert_vector_in_delta @initial_embeddings[4, true], actual_embeddings[4, true], DELTA, "Embedding for index 4 (bar) should not change"
     puts "Unrelated Embeddings Unchanged OK"
 
     puts "--- process_context Test Complete ---"

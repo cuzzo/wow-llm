@@ -1,7 +1,7 @@
 #! /usr/bin/env ruby
 
 require 'set'
-require 'cmath' # Using CMath just for tanh convenience, could implement manually
+require 'numo/narray' # Use Numo::NArray
 require 'msgpack'
 require "byebug"
 
@@ -17,71 +17,66 @@ training_dir = ARGV[0]
 # Helper functions for basic vector/matrix operations on Ruby Arrays
 module BasicLinAlg
   def dot_product(vec1, vec2)
-    vec1.zip(vec2).sum { |a, b| a * b }
+    vec1.dot(vec2)
   end
 
   # vector * matrix
   def multiply_vec_mat(vec, mat)
-    raise ArgumentError, "Vector size #{vec.size} != Matrix columns #{mat[0].size}" if mat.empty? || vec.size != mat.size
-    num_cols_out = mat[0].size
-    result = Array.new(num_cols_out, 0.0)
-    num_cols_out.times do |j|
-      sum = 0.0
-      vec.size.times do |i|
-        sum += vec[i] * mat[i][j]
-      end
-      result[j] = sum
-    end
-    result
+    vec.dot(mat)
   end
 
   # matrix * vector (column vector assumed)
   def multiply_mat_vec(mat, vec)
-     raise ArgumentError, "Matrix columns #{mat[0].size} != Vector size #{vec.size}" if mat.empty? || mat[0].size != vec.size
-     result = Array.new(mat.size, 0.0)
-     mat.size.times do |i|
-       result[i] = dot_product(mat[i], vec)
-     end
-     result
+    mat.dot(vec)
   end
 
   # outer product: vec1 (col) * vec2 (row) -> matrix
   def outer_product(vec1, vec2)
-    vec1.map do |v1_elem|
-      vec2.map { |v2_elem| v1_elem * v2_elem }
+    # Ensure inputs are Numo::NArray vectors if they aren't already
+    # (This might not be strictly necessary if you guarantee inputs are NArrays,
+    # but adds robustness)
+    v1 = vec1.is_a?(Numo::NArray) ? vec1 : Numo::DFloat.cast(vec1)
+    v2 = vec2.is_a?(Numo::NArray) ? vec2 : Numo::DFloat.cast(vec2)
+
+    # Check if inputs are vectors (1-dimensional)
+    unless v1.ndim == 1 && v2.ndim == 1
+      raise ArgumentError, "Inputs to outer_product must be 1-dimensional vectors. Shapes were: #{v1.shape.inspect} and #{v2.shape.inspect}"
     end
+
+    # Reshape v1 to a column vector [m, 1]
+    # Reshape v2 to a row vector [1, n]
+    # Perform matrix multiplication: [m, 1] . [1, n] -> [m, n]
+    v1.reshape(v1.size, 1).dot(v2.reshape(1, v2.size))
   end
 
   def transpose(mat)
-    return [] if mat.empty?
-    num_rows = mat.size
-    num_cols = mat[0].size
-    Array.new(num_cols) { |j| Array.new(num_rows) { |i| mat[i][j] } }
+    mat.transpose
   end
 
   def add_vectors(vec1, vec2)
-    vec1.zip(vec2).map { |a, b| a + b }
+    vec1 + vec2
   end
 
   def subtract_vectors(vec1, vec2)
-    vec1.zip(vec2).map { |a, b| a - b }
+    vec1 - vec2
   end
 
   def multiply_elementwise(vec1, vec2)
-    vec1.zip(vec2).map { |a, b| a * b }
+    vec1 * vec2
   end
 
   def scalar_multiply(scalar, vec)
-    vec.map { |x| scalar * x }
+    vec * scalar
   end
 
   def tanh(vec)
-    vec.map { |x| CMath.tanh(x).real } # Use CMath for tanh, take real part
+    Numo::NMath.tanh(vec)
   end
 
   # Derivative of tanh: 1 - tanh(x)^2
   def dtanh(tanh_output_vec)
-    tanh_output_vec.map { |y| 1.0 - y**2 }
+    1.0 - (tanh_output_vec ** 2)
+    #Numo::NMath.dtanh(tanh_output_vec)
   end
 
   def softmax(vec)
@@ -89,8 +84,8 @@ module BasicLinAlg
     max_val = vec.max || 0.0
     exps = vec.map { |x| Math.exp(x - max_val) }
     sum_exps = exps.sum
-    return vec.map { |_| 1.0 / vec.size } if sum_exps == 0 # Handle edge case
-    exps.map { |e| e / sum_exps }
+    return Numo::DFloat.ones(vec.size) / vec.size if sum_exps == 0 # Handle edge case
+    exps / sum_exps
   end
 end
 
@@ -113,7 +108,7 @@ class NNLM
     @ix_to_word = []
 
     # Parameters - will be initialized after vocab is built
-    @embeddings = nil # Hash { word_ix => Array[Float] }
+    @embeddings = Numo::DFloat.new()
     @W_h = nil # Hidden layer weights: input_size x hidden_size
     @b_h = nil # Hidden layer biases: hidden_size
     @W_o = nil # Output layer weights: hidden_size x vocab_size
@@ -121,7 +116,11 @@ class NNLM
   end
 
   def build_vocabulary(training_dir)
-    tokenizer.train(get_files(training_dir))
+    if File.exist?(TOKEN_FILE)
+      load_tokenizer()
+    else
+      tokenizer.train(get_files(training_dir))
+    end
 
     puts "Building vocabulary..." 
     @ix_to_word = @tokenizer.instance_variable_get(:@tokenizer).vocab.keys
@@ -136,24 +135,21 @@ class NNLM
     puts "Initializing parameters..."
     input_concat_size = @context_size * @embedding_dim
 
-    # Embedding Matrix C (represented as a Hash lookup)
-    @embeddings = Hash.new do |h, k|
-      # Default init for unknown words encountered later (should ideally not happen if vocab is fixed)
-      h[k] = Array.new(@embedding_dim) { rand * 0.1 - 0.05 }
-    end
-    @vocab_size.times do |i|
-      @embeddings[i] = Array.new(@embedding_dim) { rand * 0.1 - 0.05 }
-    end
+    @embeddings = Numo::DFloat.cast(@vocab_size.times.map do |i|
+      Numo::DFloat.cast(@embedding_dim.times.map { rand * 0.1 - 0.05 })
+    end)
+
     # Ensure PAD embedding is zero? Often helpful.
-    @embeddings[@word_to_ix['[PAD]']] = Array.new(@embedding_dim, 0.0)
+    @embeddings[@word_to_ix['[PAD]'], true] = Numo::DFloat.cast([0.0] * @embedding_dim)
 
     # Hidden Layer Weights/Biases
-    @W_h = Array.new(input_concat_size) { Array.new(@hidden_size) { rand * 0.1 - 0.05 } }
-    @b_h = Array.new(@hidden_size) { rand * 0.1 - 0.05 }
+    @W_h = Numo::DFloat.cast(Array.new(input_concat_size) { Array.new(@hidden_size) { rand * 0.1 - 0.05 } })
+    @b_h = Numo::DFloat.cast(Array.new(@hidden_size) { rand * 0.1 - 0.05 })
 
     # Output Layer Weights/Biases
-    @W_o = Array.new(@hidden_size) { Array.new(@vocab_size) { rand * 0.1 - 0.05 } }
-    @b_o = Array.new(@vocab_size) { rand * 0.1 - 0.05 }
+    @W_o = Numo::DFloat.cast(Array.new(@hidden_size) { Array.new(@vocab_size) { rand * 0.1 - 0.05 } })
+    @b_o = Numo::DFloat.cast(Array.new(@vocab_size) { rand * 0.1 - 0.05 })
+
     puts "Parameter initialization complete."
   end
 
@@ -162,7 +158,8 @@ class NNLM
   def forward(context_indices)
     # 1. Projection Layer: Look up and concatenate embeddings
     # Think of embeddings as a dictionary where each word has a unique "meaning vector" 
-    input_layer = context_indices.map { |ix| @embeddings[ix] }.flatten
+    input_layer = @embeddings[context_indices, true].reshape(@embedding_dim * @context_size)
+    #input_layer = Numo::DFloat[*(context_indices.map { |ix| @embeddings[ix] })].flatten # TODO: May be better to concat or hstack
     # Example: If context_indices = [42, 15] (representing "the cat")
     # And embeddings = { 42 => [0.1, 0.2], 15 => [0.3, 0.4] }
     # Then input_layer = [0.1, 0.2, 0.3, 0.4]
@@ -247,11 +244,11 @@ class NNLM
     input_layer = forward_pass_data[:input_layer]
 
     # Initialize gradients (matching parameter structures)
-    grad_embeddings = Hash.new { |h, k| h[k] = Array.new(@embedding_dim, 0.0) }
-    grad_W_h = Array.new(@W_h.size) { Array.new(@hidden_size, 0.0) }
-    grad_b_h = Array.new(@hidden_size, 0.0)
-    grad_W_o = Array.new(@hidden_size) { Array.new(@vocab_size, 0.0) }
-    grad_b_o = Array.new(@vocab_size, 0.0)
+    grad_embeddings = Hash.new { |h, k| h[k] = Numo::DFloat.cast([0.0] * @embedding_dim) }
+    grad_W_h = Numo::DFloat.new(@W_h.size) { Numo::DFloat.new(@hidden_size, 0.0) }
+    grad_b_h = Numo::DFloat.new(@hidden_size, 0.0)
+    grad_W_o = Numo::DFloat.new(@hidden_size) { Numo::DFloat.new(@vocab_size, 0.0) }
+    grad_b_o = Numo::DFloat.new(@vocab_size, 0.0)
 
     # 1. Calculate the main error signal: "How wrong was our prediction?"
     # This is remarkably simple: subtract 1 from the probability of the correct word
@@ -313,22 +310,37 @@ class NNLM
 
   # --- Parameter Update ---
   def update_parameters(gradients)
-    # Update Embeddings
+    # Update Embeddings (Sparse update using hash)
     gradients[:grad_embeddings].each do |word_ix, grad|
-      @embeddings[word_ix] = subtract_vectors(@embeddings[word_ix], scalar_multiply(@learning_rate, grad))
+      # Check shapes before attempting subtraction to prevent errors
+      if @embeddings[word_ix, true].shape == grad.shape
+        @embeddings[word_ix, true] -= @learning_rate * grad
+      else
+        # Handle potential shape mismatch if default proc created an unexpected shape
+        # This might indicate an issue in how grad_embeddings is populated or initialized
+        raise "Shape mismatch during embedding update for index #{word_ix}. Embedding shape: #{@embeddings[word_ix, true].shape}, Gradient shape: #{grad_vec.shape}"
+      end
     end
 
-    # Update Hidden Layer
-    @W_h = @W_h.map.with_index do |row, i|
-      subtract_vectors(row, scalar_multiply(@learning_rate, gradients[:grad_W_h][i]))
+    # Update Hidden Layer (Dense update using matrix/vector subtraction)
+    grad_wh = gradients[:grad_W_h]
+    grad_bh = gradients[:grad_b_h]
+    if @W_h.shape == grad_wh.shape && @b_h.shape == grad_bh.shape
+      @W_h -= @learning_rate * grad_wh
+      @b_h -= @learning_rate * grad_bh
+    else
+      raise "Shape mismatch updating hidden layer: W_h=#{@W_h.shape} vs Grad=#{@grad_wh.shape}, b_h=#{@b_h.shape} vs Grad=#{grad_bh.shape}"
     end
-    @b_h = subtract_vectors(@b_h, scalar_multiply(@learning_rate, gradients[:grad_b_h]))
 
-    # Update Output Layer
-    @W_o = @W_o.map.with_index do |row, i|
-      subtract_vectors(row, scalar_multiply(@learning_rate, gradients[:grad_W_o][i]))
+    # Update Output Layer (Dense update using matrix/vector subtraction)
+    grad_wo = gradients[:grad_W_o]
+    grad_bo = gradients[:grad_b_o]
+    if @W_o.shape == grad_wo.shape && @b_o.shape == grad_bo.shape
+      @W_o -= @learning_rate * grad_wo
+      @b_o -= @learning_rate * grad_bo
+    else
+      raise "Shape mismatch updating output layer: W_o=#{@W_o.shape} vs Grad=#{@grad_wo.shape}, b_o=#{@b_o.shape} vs Grad=#{grad_bo.shape}"
     end
-    @b_o = subtract_vectors(@b_o, scalar_multiply(@learning_rate, gradients[:grad_b_o]))
   end
 
   # w -> for each word
@@ -361,25 +373,28 @@ class NNLM
     raise "Vocabulary not built!" unless @vocab_size > 0
 
     padding_ix = @word_to_ix["[PAD]"]
-    sentences = get_input(training_dir)
 
     puts "\nStarting training..."
     epochs.times do |epoch|
       total_loss = 0.0
       example_count = 0
 
-      sentences.each_with_index do |sentence, s_id|
-        # Create context windows and targets
-        padded_sentence = Array.new(@context_size, padding_ix) + sentence
-        (padded_sentence.size - @context_size).times do |i|
-          total_loss += process_context(padded_sentence, i)
-          example_count += 1 
+      1_0000.times do |batch|
+      	excerpts = get_input(training_dir, batch, 500)
+
+        excerpts.each_with_index do |excerpt|
+          # Create context windows and targets
+          padded_excerpt = Array.new(@context_size, padding_ix) + excerpt
+          (padded_excerpt.size - @context_size).times do |i|
+            total_loss += process_context(padded_excerpt, i)
+            example_count += 1 
+          end
         end
+	avg_loss = example_count > 0 ? total_loss / example_count : 0
+        puts "Epoch #{epoch + 1}/#{epochs}, Batch #{batch + 1}/1000, Average Loss: #{avg_loss.round(4)}, Perplexity: #{(Math::E**avg_loss).round(4)}"
       end
-      avg_loss = example_count > 0 ? total_loss / example_count : 0
-      puts "Epoch #{epoch + 1}/#{epochs}, Average Loss: #{avg_loss.round(4)}, Perplexity: #{(Math::E**avg_loss).round(4)}"
     end
-    puts "Training finished."
+     puts "Training finished."
   end
 
   # --- Prediction ---
@@ -394,7 +409,11 @@ class NNLM
     probabilities = forward_data[:probabilities]
 
     # Find the index with the highest probability
-    predicted_index = probabilities.each_with_index.max_by { |prob, _ix| prob }[1]
+    predicted_index = probabilities
+      .to_a
+      .each_with_index
+      .max_by { |prob, _ix| prob }
+      .last
 
     @ix_to_word[predicted_index]
   end
@@ -413,16 +432,16 @@ class NNLM
       ix_to_word: @ix_to_word,
 
       # Parameters
-      embeddings: @embeddings,
-      W_h: @W_h,
-      b_h: @b_h,
-      W_o: @W_o,
-      b_o: @b_o
+      embeddings: @embeddings.to_a,
+      W_h: @W_h.to_a,
+      b_h: @b_h.to_a,
+      W_o: @W_o.to_a,
+      b_o: @b_o.to_a
     }
 
     begin
       File.open(filepath, 'wb') do |file|
-        MessagePack.pack(model_data, file)
+        MessagePack.dump(model_data, file)
       end
       puts "Model saved successfully."
     rescue => e
@@ -455,11 +474,11 @@ class NNLM
       loaded_model.instance_variable_set(:@vocab_size, model_data["vocab_size"])
       loaded_model.instance_variable_set(:@word_to_ix, model_data["word_to_ix"])
       loaded_model.instance_variable_set(:@ix_to_word, model_data["ix_to_word"])
-      loaded_model.instance_variable_set(:@embeddings, model_data["embeddings"])
-      loaded_model.instance_variable_set(:@W_h, model_data["W_h"])
-      loaded_model.instance_variable_set(:@b_h, model_data["b_h"])
-      loaded_model.instance_variable_set(:@W_o, model_data["W_o"])
-      loaded_model.instance_variable_set(:@b_o, model_data["b_o"])
+      loaded_model.instance_variable_set(:@embeddings, Numo::DFloat.cast(model_data["embeddings"]))
+      loaded_model.instance_variable_set(:@W_h, Numo::DFloat.cast(model_data["W_h"]))
+      loaded_model.instance_variable_set(:@b_h, Numo::DFloat.cast(model_data["b_h"]))
+      loaded_model.instance_variable_set(:@W_o, Numo::DFloat.cast(model_data["W_o"]))
+      loaded_model.instance_variable_set(:@b_o, Numo::DFloat.cast(model_data["b_o"]))
 
       puts "Model loaded successfully."
       loaded_model # Return the rehydrated model object
@@ -477,17 +496,22 @@ class NNLM
       .map { |p| File.join(training_dir, p) }
   end
 
-
-  def get_input(training_dir)
+  def get_input(training_dir, batch, batch_size)
     files = get_files(training_dir)    
-    puts "TRAINING ON THESE FILES: #{files}"
-    
-    corpus = files
+
+    files
       .map do |f|
         if f == "." || f == ".."
           next acc
         end
-        File
+        if File.exist?("data/#{File.basename(f)}.msgpack")
+          packed_data = File.binread("data/#{File.basename(f)}.msgpack")
+          tokens = MessagePack.unpack(packed_data)
+          next tokens
+        end
+
+        puts "READ FILE: #{f}"
+        str = File
           .read(f)
           .downcase
           .chars
@@ -513,10 +537,15 @@ class NNLM
           .gsub(/([a-z])'([a-z])/, '\1 \' \2') # handle contractions
           .gsub(/([.,!?;:()\[\]{}""''…`_-])/, ' \1 ') # handle punctation
           .gsub(/(\d) \. (\d)/, '\1.\2') # handle numbers
-          .gsub(/\s*\n+\s*/, " #{PARAGRAPH} ")[0...10_000]
-      end
+          .gsub(/\s*\n+\s*/, " #{PARAGRAPH} ")
 
-    corpus.map { |s| @tokenizer.tokenize(s) }
+        puts "TOKENIZE FILE: #{f}"
+        tokens = @tokenizer.tokenize(str)
+	puts "STORING #{f}"
+        File.open("data/#{File.basename(f)}.msgpack", "wb") { |mf| MessagePack.dump(tokens, mf) }
+        tokens
+      end
+      .map { |input| input[(batch*batch_size)...((batch+1)*batch_size+1)] } # Get batch_size tokens for each book
   end
 end
 

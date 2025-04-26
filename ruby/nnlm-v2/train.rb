@@ -7,9 +7,9 @@ training_dir = ARGV[0]
 # 2. Initialize the Model
 if !File.exist?(MODEL_FILE)
   nnlm = NNLM.new(
-    embedding_dim: 4, # Small embedding size
-    context_size: 5,   # Use 2 preceding words (trigrams)
-    hidden_size: 20,   # Small hidden layer
+    embedding_dim: 32,   # Small embedding size
+    context_size: 32,    # Use 32 preceding words 
+    hidden_size: 20,     # Small hidden layer
     learning_rate: 0.05
   )
   # 3. Build Vocabulary and Initialize Parameters
