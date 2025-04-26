@@ -7,8 +7,8 @@ class TokenLLM
   attr_reader :n, :weights, :model, :vocab, :token_to_id, :id_to_token
 
   DASHES = [150, 151].map(&:chr) # em & en dash
-  PARAGRAPH = "[PARAGRAPH]".freeze
-  PARAGRAPH_STR = "\n\n".freeze
+  PARAGRAPH = "[PARAGRAPH]"
+  PARAGRAPH_STR = "\n\n"
 
   CAPITAL_MARKER = [".", "!", "?", "\n\n"]
   PUNCTUATION = [".", ",", "!", "?", ";", ":", "(", ")", "-"]

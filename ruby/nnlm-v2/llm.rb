@@ -7,9 +7,9 @@ require "msgpack"
 require_relative "tokenizer"
 
 DASHES = [150, 151].map(&:chr) # em & en dash
-PARAGRAPH = "[PARAGRAPH]".freeze
-MODEL_FILE = "model.msgpack".freeze
-TOKEN_FILE = "tokens.json".freeze
+PARAGRAPH = "[PARAGRAPH]"
+MODEL_FILE = "model.msgpack"
+TOKEN_FILE = "tokens.json"
 
 training_dir = ARGV[0]
 
