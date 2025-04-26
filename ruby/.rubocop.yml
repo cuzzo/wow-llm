@@ -25,3 +25,6 @@ Style/SymbolArray:
 
 Metrics/MethodLength:
   Enabled: False
+
+Layout/SpaceInsideArrayLiteralBrackets:
+  Enabled: False

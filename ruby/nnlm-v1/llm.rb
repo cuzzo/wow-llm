@@ -36,11 +36,11 @@ module BasicLinAlg
   # matrix * vector (column vector assumed)
   def multiply_mat_vec(mat, vec)
     raise ArgumentError, "Matrix columns #{mat[0].size} != Vector size #{vec.size}" if mat.empty? || mat[0].size != vec.size
-     result = Array.new(mat.size, 0.0)
-     mat.size.times do |i|
-       result[i] = dot_product(mat[i], vec)
-     end
-     result
+    result = Array.new(mat.size, 0.0)
+    mat.size.times do |i|
+      result[i] = dot_product(mat[i], vec)
+    end
+    result
   end
 
   # outer product: vec1 (col) * vec2 (row) -> matrix

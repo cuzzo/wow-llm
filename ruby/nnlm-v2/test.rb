@@ -33,11 +33,11 @@ module Minitest::Assertions
   # vector values are element-wise equal within a delta.
   def assert_embedding_hash_in_delta(expected_hash, actual_hash, delta = 1e-6, msg = nil)
     msg ||= "Expected embedding hashes to be equal within delta #{delta}"
-     assert_equal(expected_hash.keys.sort, actual_hash.keys.sort, "#{msg} (keys differ)")
-     expected_hash.each do |key, expected_vec|
-       assert(actual_hash.key?(key), "#{msg} (actual hash missing key #{key})")
-       assert_vector_in_delta(expected_vec, actual_hash[key], delta, "#{msg} (difference for key #{key})")
-     end
+    assert_equal(expected_hash.keys.sort, actual_hash.keys.sort, "#{msg} (keys differ)")
+    expected_hash.each do |key, expected_vec|
+      assert(actual_hash.key?(key), "#{msg} (actual hash missing key #{key})")
+      assert_vector_in_delta(expected_vec, actual_hash[key], delta, "#{msg} (difference for key #{key})")
+    end
   end
 end
 
@@ -287,8 +287,7 @@ class TestNNLM < Minitest::Test
     all_word_idxs = @nnlm.instance_variable_get(:@embeddings).shape.first.times.to_a
     unused_idxs = (all_word_idxs - context_indices)
     unused_idxs.each do |idx|
-      assert_equal gradients[:grad_embeddings][idx], [0.0, 0.0]
-                 "Unused word #{idx} should not have gradient"
+      assert_equal gradients[:grad_embeddings][idx], [0.0, 0.0], "Unused word #{idx} should not have gradient"
     end
   end
 
@@ -458,8 +457,7 @@ class TestNNLM < Minitest::Test
     gradients2 = @nnlm.backward(context_indices, target_index, forward_data)
 
     # Gradients should be identical
-    assert_equal gradients1, gradients2
-           "Same inputs should produce identical gradients"
+    assert_equal gradients1, gradients2, "Same inputs should produce identical gradients"
   end
 
   # ============================================================================

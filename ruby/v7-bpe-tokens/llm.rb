@@ -196,16 +196,16 @@ class TokenLLM
       # Get counts for this context
       options = @model[context_id(c)] || {}
 
-      weight = weights()[i]
-      options.each do |token, v|
-        acc[token] ||= 0
-        acc[token] += v * weight
-      end
+     weight = weights()[i]
+     options.each do |token, v|
+       acc[token] ||= 0
+       acc[token] += v * weight
+     end
 
       # Shorten context by removing oldest character
-      c.shift
+     c.shift
 
-      acc
+     acc
    end
   end
 

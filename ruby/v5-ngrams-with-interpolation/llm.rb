@@ -214,16 +214,16 @@ class NGramLLM
      options = @model[context_id(c)] || {}
 >>>>>>> 432472e (Fix whitespace automatically with Rubocop.)
 
-      weight = weights()[i]
-      options.each do |char, v|
-        acc[char] ||= 0
-        acc[char] += v * weight
-      end
+     weight = weights()[i]
+     options.each do |char, v|
+       acc[char] ||= 0
+       acc[char] += v * weight
+     end
 
       # Shorten context by removing oldest character
-      c.shift
+     c.shift
 
-      acc
+     acc
    end
   end
 

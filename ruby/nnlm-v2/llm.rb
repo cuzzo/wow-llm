@@ -389,11 +389,11 @@ class NNLM
             example_count += 1
           end
         end
-	avg_loss = example_count > 0 ? total_loss / example_count : 0
+	       avg_loss = example_count > 0 ? total_loss / example_count : 0
         puts "Epoch #{epoch + 1}/#{epochs}, Batch #{batch + 1}/1000, Average Loss: #{avg_loss.round(4)}, Perplexity: #{(Math::E**avg_loss).round(4)}"
       end
     end
-     puts "Training finished."
+    puts "Training finished."
   end
 
   # --- Prediction ---
@@ -540,7 +540,7 @@ class NNLM
 
         puts "TOKENIZE FILE: #{f}"
         tokens = @tokenizer.tokenize(str)
-	puts "STORING #{f}"
+	       puts "STORING #{f}"
         File.open("data/#{File.basename(f)}.msgpack", "wb") { |mf| MessagePack.dump(tokens, mf) }
         tokens
       end

@@ -33,11 +33,11 @@ module Minitest::Assertions
   # vector values are element-wise equal within a delta.
   def assert_embedding_hash_in_delta(expected_hash, actual_hash, delta = 1e-6, msg = nil)
     msg ||= "Expected embedding hashes to be equal within delta #{delta}"
-     assert_equal(expected_hash.keys.sort, actual_hash.keys.sort, "#{msg} (keys differ)")
-     expected_hash.each do |key, expected_vec|
-       assert(actual_hash.key?(key), "#{msg} (actual hash missing key #{key})")
-       assert_vector_in_delta(expected_vec, actual_hash[key], delta, "#{msg} (difference for key #{key})")
-     end
+    assert_equal(expected_hash.keys.sort, actual_hash.keys.sort, "#{msg} (keys differ)")
+    expected_hash.each do |key, expected_vec|
+      assert(actual_hash.key?(key), "#{msg} (actual hash missing key #{key})")
+      assert_vector_in_delta(expected_vec, actual_hash[key], delta, "#{msg} (difference for key #{key})")
+    end
   end
 end
 
@@ -289,8 +289,7 @@ class TestNNLM < Minitest::Test
     all_word_idxs = @nnlm.instance_variable_get(:@embeddings).keys
     unused_idxs = (all_word_idxs - context_indices)
     unused_idxs.each do |idx|
-      assert_equal gradients[:grad_embeddings][idx], [0.0, 0.0]
-                 "Unused word #{idx} should not have gradient"
+      assert_equal gradients[:grad_embeddings][idx], [0.0, 0.0], "Unused word #{idx} should not have gradient"
     end
   end
 
@@ -460,8 +459,7 @@ class TestNNLM < Minitest::Test
     gradients2 = @nnlm.backward(context_indices, target_index, forward_data)
 
     # Gradients should be identical
-    assert_equal gradients1, gradients2
-           "Same inputs should produce identical gradients"
+    assert_equal gradients1, gradients2, "Same inputs should produce identical gradients"
   end
 
   # ============================================================================
@@ -532,10 +530,10 @@ class TestNNLM < Minitest::Test
     context_indices = @test_context_indices
     context_indices.each_with_index do |word_ix, i|
       start_idx = i * @embedding_dim
-       end_idx = start_idx + @embedding_dim - 1
-       embedding_grad_slice = expected_d_input_layer[start_idx..end_idx]
+      end_idx = start_idx + @embedding_dim - 1
+      embedding_grad_slice = expected_d_input_layer[start_idx..end_idx]
        # Important: Use add_vectors for accumulation if the same index appeared multiple times
-       expected_grad_embeddings[word_ix] = @nnlm.add_vectors(expected_grad_embeddings[word_ix], embedding_grad_slice)
+      expected_grad_embeddings[word_ix] = @nnlm.add_vectors(expected_grad_embeddings[word_ix], embedding_grad_slice)
     end
     puts "Expected grad_embeddings: #{expected_grad_embeddings.inspect}"
 
