@@ -511,7 +511,7 @@ class NNLM
               c = "-"
             elsif c == "{" || c == "["
               c = "("
-            elsif c == "}" || c == "}"
+            elsif c == "}" || c == "]"
               c = ")"
             elsif c == "€"
               c = "$"

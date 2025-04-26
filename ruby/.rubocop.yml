@@ -38,9 +38,13 @@ Naming/VariableName:
     - W_o
     - expected_W_o
     - actual_W_o
+    - grad_W_o
+    - initial_W_o
     - W_h
     - expected_W_h
     - actual_W_h
+    - grad_W_h
+    - initial_W_h
 
 Metrics/ClassLength:
   Enabled: False
