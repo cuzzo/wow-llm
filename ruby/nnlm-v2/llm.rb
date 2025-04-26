@@ -75,7 +75,6 @@ module BasicLinAlg
   # Derivative of tanh: 1 - tanh(x)^2
   def dtanh(tanh_output_vec)
     1.0 - (tanh_output_vec ** 2)
-    #Numo::NMath.dtanh(tanh_output_vec)
   end
 
   def softmax(vec)
@@ -158,7 +157,6 @@ class NNLM
     # 1. Projection Layer: Look up and concatenate embeddings
     # Think of embeddings as a dictionary where each word has a unique "meaning vector"
     input_layer = @embeddings[context_indices, true].reshape(@embedding_dim * @context_size)
-    #input_layer = Numo::DFloat[*(context_indices.map { |ix| @embeddings[ix] })].flatten # TODO: May be better to concat or hstack
     # Example: If context_indices = [42, 15] (representing "the cat")
     # And embeddings = { 42 => [0.1, 0.2], 15 => [0.3, 0.4] }
     # Then input_layer = [0.1, 0.2, 0.3, 0.4]

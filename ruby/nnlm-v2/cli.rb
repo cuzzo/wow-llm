@@ -1,4 +1,5 @@
 #! /usr/bin/env ruby
+# frozen_string_literal: true
 
 require_relative "llm"
 
@@ -13,7 +14,7 @@ end
 
 # 2. Predict
 puts "\n--- Predictions ---"
-#context1 = "Jon Snow looked back in"
+# context1 = "Jon Snow looked back in"
 context1 = "It took Ned a moment"
 pred1 = nnlm.predict_next_word(context1)
 puts "Context: #{context1} -> Predicted: #{pred1}" # Likely predicts 'cat' or 'dog'

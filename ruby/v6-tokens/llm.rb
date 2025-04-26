@@ -108,7 +108,7 @@ class TokenLLM
     context
       .then { |c| interpolate_options(c) }
       .then { |c| temper_options(c, temp) }
-      #.then { |c| smoothen_options(c) }
+      # .then { |c| smoothen_options(c) }
   end
 
   # Fallback: If context not seen during training, pick a random character from vocab

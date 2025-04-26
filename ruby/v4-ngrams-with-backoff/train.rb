@@ -30,9 +30,9 @@ llm = NGramLLM.new(ARGV[1].to_i)
 
 data_len = data_len || training_data.size
 llm.train(training_data[0...data_len])
-#llm.prune()
+# llm.prune()
 
 File.write("models/#{output_file}", llm.model.to_msgpack, mode: "wb")
-#File.write("models/#{output_file.gsub("model", "tokens")}", llm.token_to_id.to_msgpack, mode: "wb")
+# File.write("models/#{output_file.gsub("model", "tokens")}", llm.token_to_id.to_msgpack, mode: "wb")
 
 puts "MODEL WRITTEN TO: models/#{output_file}"
