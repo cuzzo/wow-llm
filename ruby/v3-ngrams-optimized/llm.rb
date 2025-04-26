@@ -1,7 +1,7 @@
 #! /usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'set'
+require "set"
 
 class NGramLLM
   attr_reader :n, :model, :vocab
@@ -90,7 +90,7 @@ class NGramLLM
     end
 
     puts "Generation complete."
-    generated_text.pack('C*')
+    generated_text.pack("C*")
   end
 
   private
@@ -99,8 +99,8 @@ class NGramLLM
   def context_id(byte_context)
     pad = [0] * (4 - byte_context.length)
     (pad + byte_context)
-      .pack('C4')
-      .unpack('N')
+      .pack("C4")
+      .unpack("N")
       .first
   end
 

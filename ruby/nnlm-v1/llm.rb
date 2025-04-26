@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
-require 'set'
-require 'cmath' # Using CMath just for tanh convenience, could implement manually
-require 'msgpack'
+require "set"
+require "cmath" # Using CMath just for tanh convenience, could implement manually
+require "msgpack"
 require "byebug"
 
 require_relative "tokenizer"
 
 DASHES = [150, 151].map(&:chr) # em & en dash
-PARAGRAPH = '[PARAGRAPH]'.freeze
+PARAGRAPH = "[PARAGRAPH]".freeze
 MODEL_FILE = "model.msgpack".freeze
 TOKEN_FILE = "tokens.json".freeze
 
@@ -145,7 +145,7 @@ class NNLM
       @embeddings[i] = Array.new(@embedding_dim) { rand * 0.1 - 0.05 }
     end
     # Ensure PAD embedding is zero? Often helpful.
-    @embeddings[@word_to_ix['[PAD]']] = Array.new(@embedding_dim, 0.0)
+    @embeddings[@word_to_ix["[PAD]"]] = Array.new(@embedding_dim, 0.0)
 
     # Hidden Layer Weights/Biases
     @W_h = Array.new(input_concat_size) { Array.new(@hidden_size) { rand * 0.1 - 0.05 } }
@@ -421,7 +421,7 @@ class NNLM
     }
 
     begin
-      File.open(filepath, 'wb') do |file|
+      File.open(filepath, "wb") do |file|
         MessagePack.pack(model_data, file)
       end
       puts "Model saved successfully."
@@ -498,7 +498,7 @@ class NNLM
               c = "'"
             elsif DASHES.include?(c)
               c = "-"
-            elsif c == '—'
+            elsif c == "—"
               c = "-"
             elsif c == "{" || c == "["
               c = "("

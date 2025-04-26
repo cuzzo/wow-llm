@@ -1,13 +1,13 @@
 #! /usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'minitest/autorun'
-require 'minitest/rg'
-require 'cmath'
-require 'set'
+require "minitest/autorun"
+require "minitest/rg"
+require "cmath"
+require "set"
 
-require_relative 'tokenizer'
-require_relative 'llm'
+require_relative "tokenizer"
+require_relative "llm"
 
 # Define a helper for comparing floating point arrays/matrices
 module Minitest::Assertions

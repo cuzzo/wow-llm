@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require 'set'
-require 'numo/narray' # Use Numo::NArray
-require 'msgpack'
+require "set"
+require "numo/narray" # Use Numo::NArray
+require "msgpack"
 
 require_relative "tokenizer"
 
 DASHES = [150, 151].map(&:chr) # em & en dash
-PARAGRAPH = '[PARAGRAPH]'.freeze
+PARAGRAPH = "[PARAGRAPH]".freeze
 MODEL_FILE = "model.msgpack".freeze
 TOKEN_FILE = "tokens.json".freeze
 
@@ -138,7 +138,7 @@ class NNLM
     end)
 
     # Ensure PAD embedding is zero? Often helpful.
-    @embeddings[@word_to_ix['[PAD]'], true] = Numo::DFloat.cast([0.0] * @embedding_dim)
+    @embeddings[@word_to_ix["[PAD]"], true] = Numo::DFloat.cast([0.0] * @embedding_dim)
 
     # Hidden Layer Weights/Biases
     @W_h = Numo::DFloat.cast(Array.new(input_concat_size) { Array.new(@hidden_size) { rand * 0.1 - 0.05 } })
@@ -437,7 +437,7 @@ class NNLM
     }
 
     begin
-      File.open(filepath, 'wb') do |file|
+      File.open(filepath, "wb") do |file|
         MessagePack.dump(model_data, file)
       end
       puts "Model saved successfully."
@@ -519,7 +519,7 @@ class NNLM
               c = "'"
             elsif DASHES.include?(c)
               c = "-"
-            elsif c == '—'
+            elsif c == "—"
               c = "-"
             elsif c == "{" || c == "["
               c = "("

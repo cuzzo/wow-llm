@@ -1,18 +1,18 @@
 #! /usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'set'
+require "set"
 
 class TokenLLM
   attr_reader :n, :weights, :model, :vocab, :token_to_id, :id_to_token
 
   DASHES = [150, 151].map(&:chr) # em & en dash
-  PARAGRAPH = '[PARAGRAPH]'.freeze
+  PARAGRAPH = "[PARAGRAPH]".freeze
   PARAGRAPH_STR = "\n\n".freeze
 
-  CAPITAL_MARKER = ['.', '!', '?', "\n\n"]
-  PUNCTUATION = ['.', ',', '!', '?', ';', ':', '(', ')', '-']
-  QUOTES = ['"', '\'']
+  CAPITAL_MARKER = [".", "!", "?", "\n\n"]
+  PUNCTUATION = [".", ",", "!", "?", ";", ":", "(", ")", "-"]
+  QUOTES = ['"', "'"]
 
   # n: The order of the n-gram (e.g., 3 for trigrams)
   def initialize(n = 3)
@@ -244,7 +244,7 @@ class TokenLLM
           c = "'"
         elsif DASHES.include?(c)
           c = "-"
-        elsif c == '—'
+        elsif c == "—"
           c = "-"
         elsif c == "{" || c == "["
           c = "("

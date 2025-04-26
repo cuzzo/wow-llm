@@ -1,7 +1,7 @@
 #! /usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'set'
+require "set"
 
 class NGramLLM
   attr_reader :n, :model, :vocab
@@ -9,13 +9,13 @@ class NGramLLM
   DASHES = [145, 146].map(&:chr) # em & en dash
 
   # DO NOT INCLUDE MORE THAN 63 CHARS, AT 62 NOW.
-  CHARS = (('a'..'z').to_a + ('0'..'9').to_a + [
-        ' ', '\n', '.', ',', '"', '\'', '-',
-        '!', '?', ';', ':', '_',
-        '(', ')',
-        '/', '\\', '|',
-        '@', '#', '$', '%', '%', '*',
-        '+', '=', '<', '>'
+  CHARS = (("a".."z").to_a + ("0".."9").to_a + [
+        " ", '\n', ".", ",", '"', "'", "-",
+        "!", "?", ";", ":", "_",
+        "(", ")",
+        "/", "\\", "|",
+        "@", "#", "$", "%", "%", "*",
+        "+", "=", "<", ">"
       ])
       .each_with_index
       .map { |char, i| [char, i + 1] }
@@ -157,7 +157,7 @@ class NGramLLM
   def decode(tokens)
     tokens
       .map { |c| ORDS[c.to_i] || "~" }
-      .join('')
+      .join("")
   end
 
   # Encode an n-gram of 6-bit integers (ascii) into a BigInt of arbitrary size.

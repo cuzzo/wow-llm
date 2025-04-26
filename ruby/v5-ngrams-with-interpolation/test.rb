@@ -1,9 +1,9 @@
 #! /usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'minitest/autorun'
-require 'minitest/rg'
-require_relative 'llm'
+require "minitest/autorun"
+require "minitest/rg"
+require_relative "llm"
 
 class NGramLLMTest < Minitest::Test
   TOKEN_A = 1
