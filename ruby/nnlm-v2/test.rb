@@ -409,15 +409,15 @@ class TestNNLM < Minitest::Test
     gradients = @nnlm.backward(context_indices, target_index, forward_data)
 
     # Helper to check if a matrix has any non-zero elements
-    def has_non_zero?(matrix)
+    def non_zero?(matrix)
       matrix.flatten.to_a.any? { |x| x != 0 }
     end
 
     # All gradient matrices should have at least some non-zero values
-    assert has_non_zero?(gradients[:grad_W_h]), "Hidden weights gradient should not be all zeros"
-    assert has_non_zero?(gradients[:grad_b_h]), "Hidden bias gradient should not be all zeros"
-    assert has_non_zero?(gradients[:grad_W_o]), "Output weights gradient should not be all zeros"
-    assert has_non_zero?(gradients[:grad_b_o]), "Output bias gradient should not be all zeros"
+    assert non_zero?(gradients[:grad_W_h]), "Hidden weights gradient should not be all zeros"
+    assert non_zero?(gradients[:grad_b_h]), "Hidden bias gradient should not be all zeros"
+    assert non_zero?(gradients[:grad_W_o]), "Output weights gradient should not be all zeros"
+    assert non_zero?(gradients[:grad_b_o]), "Output bias gradient should not be all zeros"
 
     # At least some embedding gradients should be non-zero
     used_embedding_grads = context_indices.map { |idx| gradients[:grad_embeddings][idx] }.flatten

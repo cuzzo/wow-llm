@@ -28,3 +28,22 @@ Metrics/MethodLength:
 
 Layout/SpaceInsideArrayLiteralBrackets:
   Enabled: False
+
+Layout/EmptyLines:
+  Enabled: False
+
+Naming/VariableName:
+  Enabled: true
+  AllowedIdentifiers:
+    - W_o
+    - expected_W_o
+    - actual_W_o
+    - W_h
+    - expected_W_h
+    - actual_W_h
+
+Metrics/ClassLength:
+  Enabled: False
+
+Style/MultipleComparison:
+  Enabled: False
