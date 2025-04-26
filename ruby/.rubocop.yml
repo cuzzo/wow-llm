@@ -60,3 +60,6 @@ Layout/MultilineMethodCallBraceLayout:
 
 Metrics/AbcSize:
   Enabled: False
+
+Style/RedundantArgument:
+  Enabled: False

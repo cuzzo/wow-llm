@@ -257,7 +257,7 @@ class TokenLLM
       end
       .join("")
       .gsub(/([a-z])'([a-z])/, '\1 \' \2') # handle contractions
-      .gsub(/([.,!?;:()\[\]{}""''…`_-])/, ' \1 ') # handle punctation
+      .gsub(/([.,!?;:()\[\]{}"'…`_-])/, ' \1 ') # handle punctation
       .gsub(/(\d) \. (\d)/, '\1.\2') # handle numbers
       .gsub(/\s*\n+\s*/, " #{PARAGRAPH} ")
       .split(/\s+/)
