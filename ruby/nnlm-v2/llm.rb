@@ -3,7 +3,6 @@
 require 'set'
 require 'numo/narray' # Use Numo::NArray
 require 'msgpack'
-require "byebug"
 
 require_relative "tokenizer"
 

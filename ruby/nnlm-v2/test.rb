@@ -1,12 +1,10 @@
 #! /usr/bin/env ruby
 
 require 'minitest/autorun'
-require 'minitest/pride' # Optional: Colorized output
+require 'minitest/rg'
 require 'numo/narray'
 require 'cmath'
 require 'set'
-
-require 'byebug'
 
 require_relative 'tokenizer'
 require_relative 'llm'

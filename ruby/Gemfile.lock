@@ -1,6 +1,10 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    byebug (12.0.0)
+    minitest (5.25.5)
+    minitest-rg (5.3.0)
+      minitest (~> 5.0)
     msgpack (1.8.0)
     tokenizers (0.5.4-x86_64-linux)
 
@@ -8,6 +12,8 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  byebug
+  minitest-rg
   msgpack (~> 1.7)
   tokenizers (~> 0.5)
 

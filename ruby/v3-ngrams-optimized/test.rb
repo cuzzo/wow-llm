@@ -1,7 +1,7 @@
 #! /usr/bin/env ruby
 
 require 'minitest/autorun'
-require 'minitest/pride'
+require 'minitest/rg'
 require_relative 'llm'  
 
 class NGramLLMTest < Minitest::Test

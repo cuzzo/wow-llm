@@ -1,0 +1,12 @@
+source "https://rubygems.org"
+
+gem "msgpack", "~> 1.7"
+gem "tokenizers", "~> 0.5"
+
+group :development do
+  gem "byebug"
+end
+
+group :development, :test do
+  gem "minitest-rg"
+end
