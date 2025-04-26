@@ -325,7 +325,7 @@ class TestNNLM < Minitest::Test
            "Error for target word should be negative (want higher probability)"
 
     # Error for at least one non-target word should be positive (want lower probability)
-    non_target_errors = output_errors.to_a.each_with_index.select { |_, i| i != target_index }.map(&:first)
+    non_target_errors = output_errors.to_a.each_with_index.reject { |_, i| i == target_index }.map(&:first)
     assert non_target_errors.any? { |e| e > 0 },
            "Error for at least one non-target word should be positive"
   end
