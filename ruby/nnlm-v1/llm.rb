@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'set'
 require 'cmath' # Using CMath just for tanh convenience, could implement manually
 require 'msgpack'

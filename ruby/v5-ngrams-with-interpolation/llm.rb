@@ -1,4 +1,5 @@
 #! /usr/bin/env ruby
+# frozen_string_literal: true
 
 require 'set'
 
@@ -208,22 +209,18 @@ class NGramLLM
     c = context.dup
     (0...@context_size).each.reduce({}) do |acc, i|
       # Get counts for this context
-<<<<<<< HEAD
       options = @model[context_id(c)] || {}
-=======
-     options = @model[context_id(c)] || {}
->>>>>>> 432472e (Fix whitespace automatically with Rubocop.)
 
-     weight = weights()[i]
-     options.each do |char, v|
-       acc[char] ||= 0
-       acc[char] += v * weight
-     end
+      weight = weights()[i]
+      options.each do |char, v|
+        acc[char] ||= 0
+        acc[char] += v * weight
+      end
 
-      # Shorten context by removing oldest character
-     c.shift
+       # Shorten context by removing oldest character
+      c.shift
 
-     acc
+      acc
    end
   end
 
