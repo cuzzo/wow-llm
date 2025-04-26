@@ -237,7 +237,7 @@ class NGramLLM
     for i in 0..@context_size
       # This formula exponentially increases the weight as i decreases
       # (remember i=0 is the highest-order n-gram)
-      weights[i] = Math.exp(bias_factor * (1.0 - i.to_f/@context_size))
+      weights[i] = Math.exp(bias_factor * (1.0 - (i.to_f/@context_size)))
     end
 
     # Normalize weights to sum to 1.0

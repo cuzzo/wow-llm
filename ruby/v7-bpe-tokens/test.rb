@@ -315,8 +315,8 @@ class TokenLLMTest < Minitest::Test
     k_x = llm4.instance_variable_get(:@token_to_id)["x"]
 
     expected_options = {
-      k_sp => 1 * weights[0] + 1 * weights[1] + 1 * weights[2],
-      k_2 => 2 * weights[0] + 2 * weights[1] + 2 * weights[2],
+      k_sp => (1 * weights[0]) + (1 * weights[1]) + (1 * weights[2]),
+      k_2 => (2 * weights[0]) + (2 * weights[1]) + (2 * weights[2]),
       k_x => 1 * weights[2],
     }
 
@@ -351,8 +351,8 @@ class TokenLLMTest < Minitest::Test
     k_x = llm4.instance_variable_get(:@token_to_id)["x"]
 
     expected_options = {
-      k_sp => 1 * weights[1] + 1 * weights[2],
-      k_2 => 2 * weights[1] + 2 * weights[2],
+      k_sp => (1 * weights[1]) + (1 * weights[2]),
+      k_2 => (2 * weights[1]) + (2 * weights[2]),
       k_x => 1 * weights[2],
     }
 

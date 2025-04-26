@@ -81,7 +81,7 @@ module BasicLinAlg
 
   # Derivative of tanh: 1 - tanh(x)^2
   def dtanh(tanh_output_vec)
-    tanh_output_vec.map { |y| 1.0 - y**2 }
+    tanh_output_vec.map { |y| 1.0 - (y**2) }
   end
 
   def softmax(vec)
@@ -139,21 +139,21 @@ class NNLM
     # Embedding Matrix C (represented as a Hash lookup)
     @embeddings = Hash.new do |h, k|
       # Default init for unknown words encountered later (should ideally not happen if vocab is fixed)
-      h[k] = Array.new(@embedding_dim) { rand * 0.1 - 0.05 }
+      h[k] = Array.new(@embedding_dim) { (rand * 0.1) - 0.05 }
     end
     @vocab_size.times do |i|
-      @embeddings[i] = Array.new(@embedding_dim) { rand * 0.1 - 0.05 }
+      @embeddings[i] = Array.new(@embedding_dim) { (rand * 0.1) - 0.05 }
     end
     # Ensure PAD embedding is zero? Often helpful.
     @embeddings[@word_to_ix["[PAD]"]] = Array.new(@embedding_dim, 0.0)
 
     # Hidden Layer Weights/Biases
-    @W_h = Array.new(input_concat_size) { Array.new(@hidden_size) { rand * 0.1 - 0.05 } }
-    @b_h = Array.new(@hidden_size) { rand * 0.1 - 0.05 }
+    @W_h = Array.new(input_concat_size) { Array.new(@hidden_size) { (rand * 0.1) - 0.05 } }
+    @b_h = Array.new(@hidden_size) { (rand * 0.1) - 0.05 }
 
     # Output Layer Weights/Biases
-    @W_o = Array.new(@hidden_size) { Array.new(@vocab_size) { rand * 0.1 - 0.05 } }
-    @b_o = Array.new(@vocab_size) { rand * 0.1 - 0.05 }
+    @W_o = Array.new(@hidden_size) { Array.new(@vocab_size) { (rand * 0.1) - 0.05 } }
+    @b_o = Array.new(@vocab_size) { (rand * 0.1) - 0.05 }
     puts "Parameter initialization complete."
   end
 

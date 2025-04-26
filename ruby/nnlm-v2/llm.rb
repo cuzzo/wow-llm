@@ -134,19 +134,19 @@ class NNLM
     input_concat_size = @context_size * @embedding_dim
 
     @embeddings = Numo::DFloat.cast(@vocab_size.times.map do |i|
-      Numo::DFloat.cast(@embedding_dim.times.map { rand * 0.1 - 0.05 })
+      Numo::DFloat.cast(@embedding_dim.times.map { (rand * 0.1) - 0.05 })
     end)
 
     # Ensure PAD embedding is zero? Often helpful.
     @embeddings[@word_to_ix["[PAD]"], true] = Numo::DFloat.cast([0.0] * @embedding_dim)
 
     # Hidden Layer Weights/Biases
-    @W_h = Numo::DFloat.cast(Array.new(input_concat_size) { Array.new(@hidden_size) { rand * 0.1 - 0.05 } })
-    @b_h = Numo::DFloat.cast(Array.new(@hidden_size) { rand * 0.1 - 0.05 })
+    @W_h = Numo::DFloat.cast(Array.new(input_concat_size) { Array.new(@hidden_size) { (rand * 0.1) - 0.05 } })
+    @b_h = Numo::DFloat.cast(Array.new(@hidden_size) { (rand * 0.1) - 0.05 })
 
     # Output Layer Weights/Biases
-    @W_o = Numo::DFloat.cast(Array.new(@hidden_size) { Array.new(@vocab_size) { rand * 0.1 - 0.05 } })
-    @b_o = Numo::DFloat.cast(Array.new(@vocab_size) { rand * 0.1 - 0.05 })
+    @W_o = Numo::DFloat.cast(Array.new(@hidden_size) { Array.new(@vocab_size) { (rand * 0.1) - 0.05 } })
+    @b_o = Numo::DFloat.cast(Array.new(@vocab_size) { (rand * 0.1) - 0.05 })
 
     puts "Parameter initialization complete."
   end
@@ -542,6 +542,6 @@ class NNLM
         File.open("data/#{File.basename(f)}.msgpack", "wb") { |mf| MessagePack.dump(tokens, mf) }
         tokens
       end
-      .map { |input| input[(batch*batch_size)...((batch+1)*batch_size+1)] } # Get batch_size tokens for each book
+      .map { |input| input[(batch*batch_size)...(((batch+1)*batch_size)+1)] } # Get batch_size tokens for each book
   end
 end
