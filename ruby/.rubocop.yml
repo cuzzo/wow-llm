@@ -63,3 +63,9 @@ Metrics/AbcSize:
 
 Style/RedundantArgument:
   Enabled: False
+
+Style/DefWithParentheses:
+  Enabled: False
+
+Metrics/PerceivedComplexity:
+  Enabled: False

@@ -484,6 +484,9 @@ class NNLM
   def get_input(training_dir, batch, batch_size)
     files = get_files(training_dir)
 
+    start_idx = batch * batch_size
+    end_idx = ((batch + 1) * batch_size)
+
     files
       .map do |f|
         if f == "." || f == ".."
@@ -526,10 +529,10 @@ class NNLM
 
         puts "TOKENIZE FILE: #{f}"
         tokens = @tokenizer.tokenize(str)
-         puts "STORING #{f}"
+        puts "STORING #{f}"
         File.open("data/#{File.basename(f)}.msgpack", "wb") { |mf| MessagePack.dump(tokens, mf) }
         tokens
       end
-      .map { |input| input[(batch*batch_size)...(((batch+1)*batch_size)+1)] } # Get batch_size tokens for each book
+      .map { |input| input[start_idx...end_idx] } # Get batch_size tokens for each book
   end
 end
