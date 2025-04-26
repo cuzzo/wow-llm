@@ -47,3 +47,12 @@ Metrics/ClassLength:
 
 Style/MultipleComparison:
   Enabled: False
+
+Layout/MultilineMethodCallIndentation:
+  EnforcedStyle: indented
+
+Layout/MultilineMethodCallBraceLayout:
+  Enabled: False
+
+Metrics/AbcSize:
+  Enabled: False

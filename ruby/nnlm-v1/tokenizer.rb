@@ -34,7 +34,7 @@ class BpeTokenizer
       min_frequency: MIN_FREQUENCY,
       special_tokens: SPECIAL_TOKENS,
       end_of_word_suffix: "</w>",
-      show_progress: show_progress,
+      show_progress: show_progress
     )
 
     puts "FILES: #{files}"

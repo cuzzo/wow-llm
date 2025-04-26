@@ -11,8 +11,6 @@ PARAGRAPH = "[PARAGRAPH]"
 MODEL_FILE = "model.msgpack"
 TOKEN_FILE = "tokens.json"
 
-training_dir = ARGV[0]
-
 # Helper functions for basic vector/matrix operations on Ruby Arrays
 module BasicLinAlg
   def dot_product(vec1, vec2)
@@ -31,21 +29,15 @@ module BasicLinAlg
 
   # outer product: vec1 (col) * vec2 (row) -> matrix
   def outer_product(vec1, vec2)
-    # Ensure inputs are Numo::NArray vectors if they aren't already
-    # (This might not be strictly necessary if you guarantee inputs are NArrays,
-    # but adds robustness)
-    v1 = vec1.is_a?(Numo::NArray) ? vec1 : Numo::DFloat.cast(vec1)
-    v2 = vec2.is_a?(Numo::NArray) ? vec2 : Numo::DFloat.cast(vec2)
-
     # Check if inputs are vectors (1-dimensional)
-    unless v1.ndim == 1 && v2.ndim == 1
-      raise ArgumentError, "Inputs to outer_product must be 1-dimensional vectors. Shapes were: #{v1.shape.inspect} and #{v2.shape.inspect}"
+    unless vec1.ndim == 1 && vec2.ndim == 1
+      raise ArgumentError, "Inputs to outer_product must be 1-dimensional vectors. Shapes were: #{vec1.shape.inspect} and #{vec2.shape.inspect}"
     end
 
     # Reshape v1 to a column vector [m, 1]
     # Reshape v2 to a row vector [1, n]
     # Perform matrix multiplication: [m, 1] . [1, n] -> [m, n]
-    v1.reshape(v1.size, 1).dot(v2.reshape(1, v2.size))
+    vec1.reshape(vec1.size, 1).dot(vec2.reshape(1, vec2.size))
   end
 
   def transpose(mat)
@@ -133,7 +125,7 @@ class NNLM
     puts "Initializing parameters..."
     input_concat_size = @context_size * @embedding_dim
 
-    @embeddings = Numo::DFloat.cast(@vocab_size.times.map do |i|
+    @embeddings = Numo::DFloat.cast(@vocab_size.times.map do |_i|
       Numo::DFloat.cast(@embedding_dim.times.map { (rand * 0.1) - 0.05 })
     end)
 
@@ -242,10 +234,6 @@ class NNLM
 
     # Initialize gradients (matching parameter structures)
     grad_embeddings = Hash.new { |h, k| h[k] = Numo::DFloat.cast([0.0] * @embedding_dim) }
-    grad_W_h = Numo::DFloat.new(@W_h.size) { Numo::DFloat.new(@hidden_size, 0.0) }
-    grad_b_h = Numo::DFloat.new(@hidden_size, 0.0)
-    grad_W_o = Numo::DFloat.new(@hidden_size) { Numo::DFloat.new(@vocab_size, 0.0) }
-    grad_b_o = Numo::DFloat.new(@vocab_size, 0.0)
 
     # 1. Calculate the main error signal: "How wrong was our prediction?"
     # This is remarkably simple: subtract 1 from the probability of the correct word
@@ -379,7 +367,7 @@ class NNLM
       1_0000.times do |batch|
       	 excerpts = get_input(training_dir, batch, 500)
 
-        excerpts.each_with_index do |excerpt|
+        excerpts.each do |excerpt|
           # Create context windows and targets
           padded_excerpt = Array.new(@context_size, padding_ix) + excerpt
           (padded_excerpt.size - @context_size).times do |i|

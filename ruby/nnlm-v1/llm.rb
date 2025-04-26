@@ -12,8 +12,6 @@ PARAGRAPH = "[PARAGRAPH]"
 MODEL_FILE = "model.msgpack"
 TOKEN_FILE = "tokens.json"
 
-training_dir = ARGV[0]
-
 # Helper functions for basic vector/matrix operations on Ruby Arrays
 module BasicLinAlg
   def dot_product(vec1, vec2)
@@ -248,10 +246,6 @@ class NNLM
 
     # Initialize gradients (matching parameter structures)
     grad_embeddings = Hash.new { |h, k| h[k] = Array.new(@embedding_dim, 0.0) }
-    grad_W_h = Array.new(@W_h.size) { Array.new(@hidden_size, 0.0) }
-    grad_b_h = Array.new(@hidden_size, 0.0)
-    grad_W_o = Array.new(@hidden_size) { Array.new(@vocab_size, 0.0) }
-    grad_b_o = Array.new(@vocab_size, 0.0)
 
     # 1. Calculate the main error signal: "How wrong was our prediction?"
     # This is remarkably simple: subtract 1 from the probability of the correct word
@@ -368,7 +362,7 @@ class NNLM
       total_loss = 0.0
       example_count = 0
 
-      sentences.each_with_index do |sentence, s_id|
+      sentences.each_with_index do |sentence, _s_id|
         # Create context windows and targets
         padded_sentence = Array.new(@context_size, padding_ix) + sentence
         (padded_sentence.size - @context_size).times do |i|

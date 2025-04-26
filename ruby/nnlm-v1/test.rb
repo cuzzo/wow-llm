@@ -82,7 +82,6 @@ class TestNNLM < Minitest::Test
       3 => [0.2, 0.4],          # foo
       4 => [-0.2, 0.1]          # bar
     }
-    input_concat_size = @context_size * @embedding_dim # 2 * 2 = 4
 
     # Dimensions: input_concat_size x hidden_size (4 x 3)
     w_h = [
@@ -585,7 +584,7 @@ class TestNNLM < Minitest::Test
     initial_pred = @nnlm.forward(predict_sentence)[:probabilities]
     initial_embeddings = @nnlm.instance_variable_get(:@embeddings).dup
 
-    actual_loss = @nnlm.process_context(padded_sentence, idx)
+    @nnlm.process_context(padded_sentence, idx)
 
     post_embeddings = @nnlm.instance_variable_get(:@embeddings).dup
     post_pred = @nnlm.forward(predict_sentence)[:probabilities]
@@ -618,13 +617,13 @@ class TestNNLM < Minitest::Test
 
     predict_sentence = [t_hello_idx, t_world_idx]
 
-    10.times do |i|
-      actual_loss = @nnlm.process_context(padded_sentence, idx)
+    10.times do |_i|
+      @nnlm.process_context(padded_sentence, idx)
 
       initial_pred = @nnlm.forward(predict_sentence)[:probabilities]
       initial_embeddings = @nnlm.instance_variable_get(:@embeddings).dup
 
-      actual_loss = @nnlm.process_context(padded_sentence, idx)
+      @nnlm.process_context(padded_sentence, idx)
 
       post_embeddings = @nnlm.instance_variable_get(:@embeddings).dup
       post_pred = @nnlm.forward(predict_sentence)[:probabilities]
@@ -661,7 +660,7 @@ class TestNNLM < Minitest::Test
     initial_pred = @nnlm.forward(predict_sentence)[:probabilities]
     initial_embeddings = @nnlm.instance_variable_get(:@embeddings).dup
 
-    actual_loss = @nnlm.process_context(padded_sentence, idx)
+    @nnlm.process_context(padded_sentence, idx)
 
     post_embeddings = @nnlm.instance_variable_get(:@embeddings).dup
     post_pred = @nnlm.forward(predict_sentence)[:probabilities]

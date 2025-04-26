@@ -149,7 +149,7 @@ class TokenLLM
   # Helper method to implement Add-k smoothening to the options for the next choice
   def smoothen_options(options)
     smoothed_weights = {}
-    current_context_total_count = options.values.sum
+    options.values.sum
 
     # Calculate smoothed weight for every character in the vocabulary
     @vocab.each do |token|
