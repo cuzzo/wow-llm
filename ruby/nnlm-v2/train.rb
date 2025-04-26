@@ -8,7 +8,7 @@ training_dir = ARGV[0]
 if !File.exist?(MODEL_FILE)
   nnlm = NNLM.new(
     embedding_dim: 32,   # Small embedding size
-    context_size: 32,    # Use 32 preceding words 
+    context_size: 32,    # Use 32 preceding words
     hidden_size: 20,     # Small hidden layer
     learning_rate: 0.05
   )

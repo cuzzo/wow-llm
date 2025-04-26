@@ -26,7 +26,7 @@ class NGramLLM
     text = text.downcase.bytes
 
     # 1) Build vocabulary
-    text.each { |char| @vocab.add(char) } 
+    text.each { |char| @vocab.add(char) }
 
     context = text[0...@context_size]
 
@@ -40,7 +40,7 @@ class NGramLLM
       # Increment the count for this next_char given the context
       @model[context_id(context)][next_char] += 1
       context.shift()
-      context.push(next_char) 
+      context.push(next_char)
     end
 
     puts "Training complete. Model has #{@model.keys.size} contexts."
@@ -55,7 +55,7 @@ class NGramLLM
     generated_text = prompt.downcase.bytes
 
     # Get the last context_size characters
-    current_context = generated_text[(-@context_size)..] 
+    current_context = generated_text[(-@context_size)..]
 
     puts "Generating #{length} characters..."
     length.times do

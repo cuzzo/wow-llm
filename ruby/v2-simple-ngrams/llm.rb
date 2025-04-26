@@ -27,7 +27,7 @@ class NGramLLM
     text = text.downcase
 
     # 1) Build vocabulary
-    text.each_char { |char| @vocab.add(char) } 
+    text.each_char { |char| @vocab.add(char) }
 
     # 2) For each context, set occurence of next char
     (text.length - @context_size).times do |i|
@@ -53,7 +53,7 @@ class NGramLLM
     generated_text = prompt.downcase
 
     # Get the last context_size characters
-    current_context = generated_text[(-@context_size)..] 
+    current_context = generated_text[(-@context_size)..]
     puts "Current context: #{current_context}"
 
     puts "Generating #{length} characters..."

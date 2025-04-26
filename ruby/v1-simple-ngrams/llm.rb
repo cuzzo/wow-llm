@@ -22,7 +22,7 @@ class NGramLLM
     puts "Training..."
 
     # 1) Build vocabulary
-    text.each_char { |char| @vocab.add(char) } 
+    text.each_char { |char| @vocab.add(char) }
 
     # 2) For each context, set occurence of next char
     (text.length - @context_size).times do |i|
@@ -42,10 +42,10 @@ class NGramLLM
     raise "Prompt must be at least #{@context_size} characters long" if prompt.length < @context_size
 
     # Start with the prompt
-    generated_text = prompt.dup 
+    generated_text = prompt.dup
 
     # Get the last context_size characters
-    current_context = generated_text[(-@context_size)..] 
+    current_context = generated_text[(-@context_size)..]
     puts "Current context: #{current_context}"
 
     puts "Generating #{length} characters..."

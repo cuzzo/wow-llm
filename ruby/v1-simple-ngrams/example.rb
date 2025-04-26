@@ -3,7 +3,7 @@
 require_relative("llm")
 require "json"
 
-training_data = ARGV[0] 
+training_data = ARGV[0]
 puts "TRAINING DATA: #{training_data}"
 
 llm = NGramLLM.new(3)

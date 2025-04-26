@@ -1,0 +1,21 @@
+# .rubocop.yml
+
+AllCops:
+  NewCops: enable # Good practice to include this
+
+Style/StringLiterals:
+  Enabled: true
+  EnforcedStyle: double_quotes
+
+Layout/LineLength:
+  Enabled: true
+  Max: 120
+
+Style/NegatedIfElseCondition:
+  Enabled: False
+
+Style/MethodCallWithoutArgsParentheses:
+  Enabled: False
+
+Layout/ExtraSpacing:
+  Enabled: False

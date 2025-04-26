@@ -11,7 +11,7 @@ class NGramLLM
   CHARS = (('a'..'z').to_a + ('0'..'9').to_a + [
         ' ', '\n', '.', ',', '"', '\'', '-',
         '!', '?', ';', ':', '_',
-        '(', ')', 
+        '(', ')',
         '/', '\\', '|',
         '@', '#', '$', '%', '%', '*',
         '+', '=', '<', '>'
@@ -42,10 +42,10 @@ class NGramLLM
   # Train the model on a given text
   def train(text)
     # Normalize the text to lowercase so that "Th" and "th" are not two different probabilities.
-    tokens = tokenize(text) 
+    tokens = tokenize(text)
 
     # 1) Build vocabulary
-    tokens.each { |token| @vocab.add(token) } 
+    tokens.each { |token| @vocab.add(token) }
 
     context = [tokens[0]]
 
@@ -81,7 +81,7 @@ class NGramLLM
     generated_text = tokenize(prompt)
 
     # Get the last context_size characters
-    current_context = generated_text[(-@context_size)..] 
+    current_context = generated_text[(-@context_size)..]
 
     puts "Generating #{length} characters..."
     length.times do
@@ -125,8 +125,8 @@ class NGramLLM
       # Shift each token to its position and OR it in
       result |= (token & 0x3F) << (idx * 6)
     end
-    result < 2**64 ? 
-      result : 
+    result < 2**64 ?
+      result :
       0
   end
 
@@ -149,12 +149,12 @@ class NGramLLM
     text
       .downcase
       .chars
-      .map do |c| 
+      .map do |c|
         if c == "“" || c == "”"
           c = "\""
         elsif c == "’" || c == "‘"
           c = "'"
-        elsif DASHES.include?(c) 
+        elsif DASHES.include?(c)
           c = "-"
         elsif c == "{" || c == "["
           c = "("
@@ -209,7 +209,7 @@ class NGramLLM
     (0...@context_size).each.reduce({}) do |acc, i|
       # Get counts for this context
       options = @model[context_id(c)] || {}
-      
+
       weight = weights()[i]
       options.each do |char, v|
         acc[char] ||= 0
@@ -217,10 +217,10 @@ class NGramLLM
       end
 
       # Shorten context by removing oldest character
-      c.shift  
+      c.shift
 
       acc
-   end  
+   end
   end
 
   def weights(bias_factor = 30.0)
@@ -230,7 +230,7 @@ class NGramLLM
     # Index 0 will be for the highest order n-gram (full context_size)
     # Last index will be for unigrams
     weights = []
-    
+
     # Generate exponentially biased weights
     # Higher bias_factor means stronger preference for higher-order n-grams
     for i in 0..@context_size
@@ -238,7 +238,7 @@ class NGramLLM
       # (remember i=0 is the highest-order n-gram)
       weights[i] = Math.exp(bias_factor * (1.0 - i.to_f/@context_size))
     end
-    
+
     # Normalize weights to sum to 1.0
     total = weights.sum
     weights.map! { |w| w / total }

@@ -5,6 +5,7 @@ gem "tokenizers", "~> 0.5"
 
 group :development do
   gem "byebug"
+  gem 'rubocop', require: false
 end
 
 group :development, :test do

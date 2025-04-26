@@ -11,7 +11,7 @@ class NGramLLM
   CHARS = (('a'..'z').to_a + ('0'..'9').to_a + [
         ' ', '\n', '.', ',', '"', '\'', '-',
         '!', '?', ';', ':', '_',
-        '(', ')', 
+        '(', ')',
         '/', '\\', '|',
         '@', '#', '$', '%', '%', '*',
         '+', '=', '<', '>'
@@ -135,12 +135,12 @@ class NGramLLM
     text
       .downcase
       .chars
-      .map do |c| 
+      .map do |c|
         if c == "“" || c == "”"
           c = "\""
         elsif c == "’" || c == "‘"
           c = "'"
-        elsif DASHES.include?(c) 
+        elsif DASHES.include?(c)
           c = "-"
         elsif c == "{" || c == "["
           c = "("
@@ -166,8 +166,8 @@ class NGramLLM
       # Shift each token to its position and OR it in
       result |= (token & 0x3F) << (idx * 6)
     end
-    result < 2**64 ? 
-      result : 
+    result < 2**64 ?
+      result :
       0
   end
 

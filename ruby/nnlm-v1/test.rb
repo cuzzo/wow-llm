@@ -1,9 +1,10 @@
 #! /usr/bin/env ruby
+# frozen_string_literal: true
 
 require 'minitest/autorun'
 require 'minitest/rg'
 require 'cmath'
-require 'set' 
+require 'set'
 
 require_relative 'tokenizer'
 require_relative 'llm'
@@ -136,64 +137,64 @@ class TestNNLM < Minitest::Test
 
   def test_forward_input_layer_concatenates_embeddings
     result = @nnlm.forward([1, 2])  # hello, world
-    
+
     # The input layer should be the concatenation of the embeddings for "hello" and "world"
     # [0.1, 0.2] = features / dims of "hello"
     # [0.3, -0.1] = features / dims of "world"
     expected_input = [0.1, 0.2, 0.3, -0.1]
     assert_equal expected_input, result[:input_layer]
   end
-  
+
   def test_forward_probabilities_sum_to_one
     result = @nnlm.forward([1, 2])  # hello, world
-    
+
     # Probabilities should sum to approximately 1.0
     assert_in_delta 1.0, result[:probabilities].sum, 0.0001
-    
+
     # All probabilities should be between 0 and 1
     result[:probabilities].each do |prob|
       assert prob >= 0.0 && prob <= 1.0, "Probability should be between 0 and 1"
     end
   end
-  
+
   def test_forward_hidden_activation_values_bounded
     result = @nnlm.forward([1, 2])  # hello, world
-    
+
     # tanh values should be between -1 and 1
     result[:hidden_activation].each do |val|
       assert val >= -1.0 && val <= 1.0, "Hidden activation should be between -1 and 1"
     end
   end
-  
+
   def test_forward_different_inputs_produce_different_outputs
     result1 = @nnlm.forward([1, 2])  # hello, world
     result2 = @nnlm.forward([3, 4])  # foo, bar
-    
+
     # Different inputs should produce different probabilities
     refute_equal result1[:probabilities], result2[:probabilities]
-    
+
     # Different inputs should produce different hidden activations
     refute_equal result1[:hidden_activation], result2[:hidden_activation]
   end
-  
+
   def test_forward_pad_tokens_produce_muted_output
     # When using all padding tokens, the input layer should be all zeros
     result_with_pads = @nnlm.forward([0, 0])  # [PAD], [PAD]
-    
+
     # Input layer should be all zeros
     assert_equal Array.new(@context_size * @embedding_dim, 0.0), result_with_pads[:input_layer]
-    
+
     # Compare with non-pad result
     result_with_words = @nnlm.forward([1, 2])  # hello, world
-    
+
     # The outputs should be different
     refute_equal result_with_pads[:probabilities], result_with_words[:probabilities]
   end
-  
+
   def test_forward_consistent_outputs_for_same_inputs
     result1 = @nnlm.forward([1, 2])  # hello, world
     result2 = @nnlm.forward([1, 2])  # hello, world again
-    
+
     # Same inputs should produce identical outputs
     assert_equal result1, result2
   end
@@ -276,14 +277,14 @@ class TestNNLM < Minitest::Test
     }
 
     gradients = @nnlm.backward(context_indices, target_index, forward_data)
-    
+
     # Only embeddings for words in the context should have non-zero gradients
     context_indices.each do |idx|
       assert gradients[:grad_embeddings].key?(idx), "Should have gradient for word #{idx}"
-      refute_equal Array.new(@embedding_dim, 0.0), gradients[:grad_embeddings][idx], 
+      refute_equal Array.new(@embedding_dim, 0.0), gradients[:grad_embeddings][idx],
                   "Gradient for used word #{idx} should not be all zeros"
     end
-    
+
     # Words not in context should not have gradients
     all_word_idxs = @nnlm.instance_variable_get(:@embeddings).keys
     unused_idxs = (all_word_idxs - context_indices)
@@ -296,12 +297,12 @@ class TestNNLM < Minitest::Test
   # Backward sets the error for the Output bias (grad_b_o)
   # These are the biases for the outputs (each word)
   # The `probabilities` in forward_data are the probabilities (each word)
-  # 
+  #
   # In backward, we are passing in the observed word ("foo")
   # Since this is an observation, it is 100% probability for this occurence
   # backward subtracts 1 from the probability to get the error for the output
   # ONLY for the target word
-  # 
+  #
   # Here we ensure that only the target word's output biases will be modified
   def test_backward_error_signal_direction_b_o
     context_indices = [1, 2]  # "hello", "world"
@@ -316,22 +317,22 @@ class TestNNLM < Minitest::Test
     # and error for other words should be positive
     gradients = @nnlm.backward(context_indices, target_index, forward_data)
 
-    
+
     # Check output layer error signal (d_output_scores)
     # This is stored directly in grad_b_o
     output_errors = gradients[:grad_b_o]
-    
+
     # Error for target word should be negative (probabilities[target] - 1.0)
-    assert output_errors[target_index] < 0, 
+    assert output_errors[target_index] < 0,
            "Error for target word should be negative (want higher probability)"
-    
+
     # Error for at least one non-target word should be positive (want lower probability)
     non_target_errors = output_errors.each_with_index.select { |_, i| i != target_index }.map(&:first)
-    assert non_target_errors.any? { |e| e > 0 }, 
+    assert non_target_errors.any? { |e| e > 0 },
            "Error for at least one non-target word should be positive"
   end
 
-  # grad_W_o tells us how to adjust the connections from the hidden layer to the output layer. 
+  # grad_W_o tells us how to adjust the connections from the hidden layer to the output layer.
   # grad_W_o moves in the *same* direction as activation for non-target words.
   # grad_W_o moves in the *opposite* direction as activation for target words.
   def test_backward_error_signal_direction_W_o
@@ -347,30 +348,30 @@ class TestNNLM < Minitest::Test
     # and error for other words should be positive
     gradients = @nnlm.backward(context_indices, target_index, forward_data)
 
-    
+
     # Check output weights error signal stored directly in grad_W_o
     output_errors = gradients[:grad_W_o]
 
     # Iterate through each hidden neuron
     @hidden_size.times do |h_idx|
       activation = forward_data[:hidden_activation][h_idx]
- 
+
       # Skip check if activation is zero (gradient contribution is zero)
       next if activation.abs < DELTA
- 
+
       # --- Check column for the TARGET word (index 3) ---
       grad_target = output_errors[h_idx][target_index]
- 
+
       # If activation is positive, gradient should be negative (to increase W_o)
       # If activation is negative, gradient should be positive (to decrease W_o, making it less negative)
       # They should have opposite signs
       assert activation * grad_target <= 0,
              "grad_W_o[#{h_idx}][#{target_index}] sign should oppose hidden_activation[#{h_idx}] sign"
- 
+
       non_target_idxs = (@nnlm.instance_variable_get(:@embeddings).keys - [target_index])
       non_target_idxs.each do |non_target_idx|
         grad_non_target = output_errors[h_idx][non_target_idx]
- 
+
         # If activation is positive, gradient should be positive (to decrease W_o)
         # If activation is negative, gradient should be negative (to increase W_o, making it less negative)
         # They should have the same sign
@@ -391,14 +392,14 @@ class TestNNLM < Minitest::Test
       hidden_activation: [0.1, -0.1, 0.2],
       input_layer: [0.1, 0.2, 0.3, -0.1]
     }
-    
+
     gradients = @nnlm.backward(context_indices, target_index, forward_data)
-    
+
     # Output bias gradients should be zeros (probabilities - target_one_hot = 0)
     assert_equal Array.new(@nnlm.instance_variable_get(:@vocab_size), 0.0), gradients[:grad_b_o],
                 "Output bias gradients should be zero when prediction is perfect"
   end
-  
+
   def test_backward_produces_non_zero_gradients
     context_indices = [1, 2]  # "hello", "world"
     target_index = 3  # "foo"
@@ -409,23 +410,23 @@ class TestNNLM < Minitest::Test
     }
 
     gradients = @nnlm.backward(context_indices, target_index, forward_data)
-    
+
     # Helper to check if a matrix has any non-zero elements
     def has_non_zero?(matrix)
       matrix.flatten.any? { |x| x != 0 }
     end
-    
+
     # All gradient matrices should have at least some non-zero values
     assert has_non_zero?(gradients[:grad_W_h]), "Hidden weights gradient should not be all zeros"
     assert has_non_zero?(gradients[:grad_b_h]), "Hidden bias gradient should not be all zeros"
     assert has_non_zero?(gradients[:grad_W_o]), "Output weights gradient should not be all zeros"
     assert has_non_zero?(gradients[:grad_b_o]), "Output bias gradient should not be all zeros"
-    
+
     # At least some embedding gradients should be non-zero
     used_embedding_grads = context_indices.map { |idx| gradients[:grad_embeddings][idx] }.flatten
     assert used_embedding_grads.any? { |x| x != 0 }, "Embedding gradients should not be all zeros"
   end
- 
+
   def test_backward_with_different_targets_produces_different_gradients
     context_indices = [1, 2]  # "hello", "world"
     forward_data = {
@@ -437,14 +438,14 @@ class TestNNLM < Minitest::Test
     # Compare gradients when target is "foo" vs "bar"
     gradients_foo = @nnlm.backward(context_indices, 3, forward_data)  # target: foo
     gradients_bar = @nnlm.backward(context_indices, 4, forward_data)  # target: bar
-    
+
     # Gradients should be different
-    assert_equal false, gradients_foo[:grad_b_o] == gradients_bar[:grad_b_o], 
+    assert_equal false, gradients_foo[:grad_b_o] == gradients_bar[:grad_b_o],
                  "Different targets should produce different output gradients"
-    assert_equal false, gradients_foo[:grad_b_h] == gradients_bar[:grad_b_h], 
+    assert_equal false, gradients_foo[:grad_b_h] == gradients_bar[:grad_b_h],
                  "Different targets should produce different hidden gradients"
   end
-  
+
   def test_backward_generates_same_gradients_for_same_inputs
     context_indices = [1, 2]  # "hello", "world"
     target_index = 3
@@ -457,12 +458,12 @@ class TestNNLM < Minitest::Test
     # Run backward twice with same inputs
     gradients1 = @nnlm.backward(context_indices, target_index, forward_data)
     gradients2 = @nnlm.backward(context_indices, target_index, forward_data)
-    
+
     # Gradients should be identical
     assert_equal gradients1, gradients2
            "Same inputs should produce identical gradients"
   end
-  
+
   # ============================================================================
   # Test Backward Pass
   # ============================================================================
@@ -584,7 +585,7 @@ class TestNNLM < Minitest::Test
     predict_sentence = [t_hello_idx, t_world_idx]
 
     initial_pred = @nnlm.forward(predict_sentence)[:probabilities]
-    initial_embeddings = @nnlm.instance_variable_get(:@embeddings).dup   
+    initial_embeddings = @nnlm.instance_variable_get(:@embeddings).dup
 
     actual_loss = @nnlm.process_context(padded_sentence, idx)
 
@@ -660,7 +661,7 @@ class TestNNLM < Minitest::Test
     predict_sentence = [t_pad_idx, t_pad_idx]
 
     initial_pred = @nnlm.forward(predict_sentence)[:probabilities]
-    initial_embeddings = @nnlm.instance_variable_get(:@embeddings).dup   
+    initial_embeddings = @nnlm.instance_variable_get(:@embeddings).dup
 
     actual_loss = @nnlm.process_context(padded_sentence, idx)
 

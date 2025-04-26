@@ -85,7 +85,7 @@ class TokenLLMTest < Minitest::Test
 
     @llm.train("a b c d e\n\nf g h i j")
     assert_equal 11, @llm.vocab.size # 11 unique words in "a b c d e\n\nf g h i j"
-    
+
     # Verify model structure
     assert @llm.model.keys.size > 0
     assert @llm.model.values.all? { |dict| dict.is_a?(Hash) }
@@ -146,7 +146,7 @@ class TokenLLMTest < Minitest::Test
 
   def test_generate_with_short_prompt
     @llm.train("hello world")
-    
+
     assert_raises(RuntimeError) do
       @llm.generate("h", 10)  # Prompt shorter than context_size
     end
@@ -162,13 +162,13 @@ class TokenLLMTest < Minitest::Test
     # Create and train a model
     original_llm = TokenLLM.new(3)
     original_llm.train("world hello world")
-    
+
     # Create a new model and load the trained model's data
     new_llm = TokenLLM.new(3)
-    
+
     new_llm.load(original_llm.model, {"world" => 0, "hello" => 1})
 
-    assert_equal new_llm.model.keys.size, original_llm.model.keys.size 
+    assert_equal new_llm.model.keys.size, original_llm.model.keys.size
     assert_equal new_llm.id_to_token.keys.size, original_llm.id_to_token.keys.size
 
     # TODO: vocab does not load perfectly, as the first n tokens in the string may not be included.
@@ -184,20 +184,20 @@ class TokenLLMTest < Minitest::Test
     # Test that the model normalizes to lowercase
     uppercase_llm = TokenLLM.new(3)
     lowercase_llm = TokenLLM.new(3)
-    
+
     uppercase_llm.train("HELLO")
     lowercase_llm.train("hello")
-    
+
     # Both models should have the same vocabulary and transitions
     assert_equal uppercase_llm.vocab, lowercase_llm.vocab
-    
+
     # Check if the context IDs are the same
     uppercase_context = "HE".downcase.bytes
     lowercase_context = "he".bytes
-    
+
     uppercase_id = uppercase_llm.send(:context_id, uppercase_context)
     lowercase_id = lowercase_llm.send(:context_id, lowercase_context)
-    
+
     assert_equal uppercase_id, lowercase_id
   end
 
@@ -206,23 +206,23 @@ class TokenLLMTest < Minitest::Test
     bigram = TokenLLM.new(2)
     trigram = TokenLLM.new(3)
     fourgram = TokenLLM.new(4)
-    
+
     sample_text = "hello world, here i am."
-    
+
     bigram.train(sample_text)
     trigram.train(sample_text)
     fourgram.train(sample_text)
-    
+
     # n-1 should be the context size
     assert_equal 1, bigram.instance_variable_get(:@context_size)
     assert_equal 2, trigram.instance_variable_get(:@context_size)
     assert_equal 3, fourgram.instance_variable_get(:@context_size)
-    
+
     # Each model should have different context patterns
     assert_operator bigram.model.keys.size, :>, 0
     assert_operator trigram.model.keys.size, :>, 0
     assert_operator fourgram.model.keys.size, :>, 0
-    
+
     # Different n values should lead to different model structures
     refute_equal bigram.model.keys.size, trigram.model.keys.size
   end
@@ -314,7 +314,7 @@ class TokenLLMTest < Minitest::Test
     k_x = llm4.instance_variable_get(:@token_to_id)["x"]
 
     expected_options = {
-      k_sp => 1 * weights[0] + 1 * weights[1] + 1 * weights[2], 
+      k_sp => 1 * weights[0] + 1 * weights[1] + 1 * weights[2],
       k_2 => 2 * weights[0] + 2 * weights[1] + 2 * weights[2],
       k_x => 1 * weights[2],
     }
@@ -350,7 +350,7 @@ class TokenLLMTest < Minitest::Test
     k_x = llm4.instance_variable_get(:@token_to_id)["x"]
 
     expected_options = {
-      k_sp => 1 * weights[1] + 1 * weights[2], 
+      k_sp => 1 * weights[1] + 1 * weights[2],
       k_2 => 2 * weights[1] + 2 * weights[2],
       k_x => 1 * weights[2],
     }
@@ -390,7 +390,7 @@ class TokenLLMTest < Minitest::Test
     baseline_temp = 1.0
     options = { TOKEN_A => 60, TOKEN_B => 30, TOKEN_C => 10 }
     total_count = options.values.sum.to_f
-    
+
     expected_probs = {
       TOKEN_A => 60 / total_count,
       TOKEN_B => 30 / total_count,
@@ -438,7 +438,7 @@ class TokenLLMTest < Minitest::Test
 
   def test_temper_with_high_temp
     high_temp = 2.0
-    
+
     options = { TOKEN_A => 60, TOKEN_B => 30, TOKEN_C => 10 }
 
     adjust = lambda { |prob| prob**(1.0 / high_temp) }
@@ -484,11 +484,11 @@ class TokenLLMTest < Minitest::Test
   end
 
   ## DETOKENIZE TEST
-  
+
   def test_detokenize
     input = "Once there was.\n\n\"Jorah are you there?\""
     tokens = @llm.send(:tokenize, input)
     reversed = @llm.send(:detokenize, tokens)
-    assert_equal reversed, input 
+    assert_equal reversed, input
   end
 end

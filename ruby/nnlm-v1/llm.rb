@@ -1,5 +1,3 @@
-#! /usr/bin/env ruby
-
 require 'set'
 require 'cmath' # Using CMath just for tanh convenience, could implement manually
 require 'msgpack'
@@ -123,7 +121,7 @@ class NNLM
   def build_vocabulary(training_dir)
     tokenizer.train(get_files(training_dir))
 
-    puts "Building vocabulary..." 
+    puts "Building vocabulary..."
     @ix_to_word = @tokenizer.instance_variable_get(:@tokenizer).vocab.keys
     @word_to_ix = @ix_to_word.each_with_index.to_h
     @vocab_size = @ix_to_word.size
@@ -161,7 +159,7 @@ class NNLM
   # O(C*E*H + H*V) => ContextSize * EmbeddingDim * HiddenSize + HiddenSize * VocabSize
   def forward(context_indices)
     # 1. Projection Layer: Look up and concatenate embeddings
-    # Think of embeddings as a dictionary where each word has a unique "meaning vector" 
+    # Think of embeddings as a dictionary where each word has a unique "meaning vector"
     input_layer = context_indices.map { |ix| @embeddings[ix] }.flatten
     # Example: If context_indices = [42, 15] (representing "the cat")
     # And embeddings = { 42 => [0.1, 0.2], 15 => [0.3, 0.4] }
@@ -193,7 +191,7 @@ class NNLM
     hidden_activation = tanh(hidden_input) # Apply tanh to keep values between -1 and 1
 
     # The tanh function adds non-linearity, allowing the network to learn complex patterns
-    # Without this, we'd only capture simple linear relationships between words 
+    # Without this, we'd only capture simple linear relationships between words
     #
     # The hidden input is a simple linear combination
     # Imagine trying to predict whether someone will like a movie
@@ -209,7 +207,7 @@ class NNLM
     # But perhaps things aren't this simple / linear. We need to curve the scores with tanh
     # Movies that are 50/50 may not be liked, but movies that are closer to 100 Romance
     # or 100 Action may be liked.
-    # 
+    #
     # tanh(10,0) = 0.96, (pure action)
     # tanh(0,10) = -0.96, (pure romance)
     # tanh(5,5) = 0, (50/50 action/romance)
@@ -373,7 +371,7 @@ class NNLM
         padded_sentence = Array.new(@context_size, padding_ix) + sentence
         (padded_sentence.size - @context_size).times do |i|
           total_loss += process_context(padded_sentence, i)
-          example_count += 1 
+          example_count += 1
         end
       end
       avg_loss = example_count > 0 ? total_loss / example_count : 0
@@ -428,7 +426,7 @@ class NNLM
     rescue => e
       puts "Error saving model: #{e.message}"
     end
-    
+
     @tokenizer.save(TOKEN_FILE)
   end
 
@@ -479,9 +477,9 @@ class NNLM
 
 
   def get_input(training_dir)
-    files = get_files(training_dir)    
+    files = get_files(training_dir)
     puts "TRAINING ON THESE FILES: #{files}"
-    
+
     corpus = files
       .map do |f|
         if f == "." || f == ".."
@@ -491,7 +489,7 @@ class NNLM
           .read(f)
           .downcase
           .chars
-          .map do |c| 
+          .map do |c|
             if c == "“" || c == "”"
               c = "\""
             elsif c == "’" || c == "‘"

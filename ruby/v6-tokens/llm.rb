@@ -33,7 +33,7 @@ class TokenLLM
   def load(model, tokens)
     @model = model
     @vocab = @model.values.map { |dict| dict.keys }.flatten.to_set
-    @token_to_id = tokens 
+    @token_to_id = tokens
     @id_to_token = @token_to_id.invert
     @next_token_id = tokens.length
   end
@@ -78,11 +78,11 @@ class TokenLLM
     generated_text = tokenize(prompt)
 
     # Get the last context_size characters
-    current_context = generated_text[(-@context_size)..] 
+    current_context = generated_text[(-@context_size)..]
 
     puts "Generating #{length} characters..."
     length.times do
-      next_char = weighted_choice(next_options(current_context, temp, k)) 
+      next_char = weighted_choice(next_options(current_context, temp, k))
 
       if next_char.nil?
         next_char == fallback_char()
@@ -124,7 +124,7 @@ class TokenLLM
     result = []
     token_context.each_with_index do |token, idx|
       # Shift each token to its position and OR it in
-      result[idx / 4] ||= 0 
+      result[idx / 4] ||= 0
       result[idx / 4] |= (token & 0xFFFF) << ((idx % 4) * 16)
     end
     result
@@ -181,7 +181,7 @@ class TokenLLM
     (0...@context_size).each.reduce({}) do |acc, i|
       # Get counts for this context
       options = @model[context_id(c)] || {}
-      
+
       weight = weights()[i]
       options.each do |token, v|
         acc[token] ||= 0
@@ -189,10 +189,10 @@ class TokenLLM
       end
 
       # Shorten context by removing oldest character
-      c.shift  
+      c.shift
 
       acc
-   end  
+   end
   end
 
   def weights(bias_factor = 30.0)
@@ -202,7 +202,7 @@ class TokenLLM
     # Index 0 will be for the highest order n-gram (full context_size)
     # Last index will be for unigrams
     weights = []
-    
+
     # Generate exponentially biased weights
     # Higher bias_factor means stronger preference for higher-order n-grams
     for i in 0..@context_size
@@ -210,7 +210,7 @@ class TokenLLM
       # (remember i=0 is the highest-order n-gram)
       weights[i] = Math.exp(bias_factor * (1.0 - i.to_f/@context_size))
     end
-    
+
     # Normalize weights to sum to 1.0
     total = weights.sum
     weights.map! { |w| w / total }
@@ -236,7 +236,7 @@ class TokenLLM
     text
       .downcase
       .chars
-      .map do |c| 
+      .map do |c|
         if c == "“" || c == "”"
           c = "\""
         elsif c == "’" || c == "‘"
@@ -262,7 +262,7 @@ class TokenLLM
       .split(/\s+/)
       .map { |token| get_token_id(token) }
   end
-  
+
   # Convert token IDs back to text
   # TODO: HYPHENATED WORDS NOT HANDLED WELL
   def detokenize(token_ids)

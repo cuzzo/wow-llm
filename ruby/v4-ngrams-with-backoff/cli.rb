@@ -19,14 +19,14 @@ def help()
   puts "ENTER .q OR .quit TO QUIT"
   puts "ENTER .h OR .help FOR HELP"
   puts ""
-end 
+end
 
 help()
 
 loop do
   puts "> "
   user_input = STDIN.gets
-  
+
   if user_input.nil?
     puts "\nInput stream closed. Exiting."
     break # Exit the loop if gets returns nil
@@ -44,7 +44,7 @@ loop do
   else
     token_count, prompt = user_input.split(":", 2)
 
-    begin 
+    begin
       generated_output = llm.generate(prompt, token_count.to_i)
       puts "\n--- Generated Text ---"
       puts generated_output
@@ -53,6 +53,6 @@ loop do
       puts "ERROR"
       puts e
     end
-  end 
+  end
 end
 

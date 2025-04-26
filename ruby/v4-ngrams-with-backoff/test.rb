@@ -77,7 +77,7 @@ class NGramLLMTest < Minitest::Test
 
     @llm.train("abcde fghij")
     assert_equal 11, @llm.vocab.size # 11 unique bytes in "abcde fghij"
-    
+
     # Verify model structure
     assert @llm.model.keys.size > 0
     assert @llm.model.values.all? { |dict| dict.is_a?(Hash) }
@@ -123,14 +123,14 @@ class NGramLLMTest < Minitest::Test
   def test_train_and_generate
     # Simple training text
     @llm.train("hello hello hello world")
-    
+
     # Generate text with a known prompt
     generated = @llm.generate("he", 10)
-    
+
     # The model should generate text that follows the patterns in the training data
     assert_kind_of String, generated
     assert_equal 12, generated.length  # "he" + 10 more characters
-    
+
     # Since "he" is always followed by "llo" in the training data, the next characters
     # should start with "llo"
     assert_match(/^hello/, generated)
@@ -138,7 +138,7 @@ class NGramLLMTest < Minitest::Test
 
   def test_generate_with_short_prompt
     @llm.train("hello world")
-    
+
     assert_raises(RuntimeError) do
       @llm.generate("h", 10)  # Prompt shorter than context_size
     end
@@ -154,10 +154,10 @@ class NGramLLMTest < Minitest::Test
     # Create and train a model
     original_llm = NGramLLM.new(3)
     original_llm.train("llhello world")
-    
+
     # Create a new model and load the trained model's data
     new_llm = NGramLLM.new(3)
-    
+
     new_llm.load(original_llm.model)
 
     assert_equal original_llm.model.keys.size, new_llm.model.keys.size
@@ -175,20 +175,20 @@ class NGramLLMTest < Minitest::Test
     # Test that the model normalizes to lowercase
     uppercase_llm = NGramLLM.new(3)
     lowercase_llm = NGramLLM.new(3)
-    
+
     uppercase_llm.train("HELLO")
     lowercase_llm.train("hello")
-    
+
     # Both models should have the same vocabulary and transitions
     assert_equal uppercase_llm.vocab, lowercase_llm.vocab
-    
+
     # Check if the context IDs are the same
     uppercase_context = "HE".downcase.bytes
     lowercase_context = "he".bytes
-    
+
     uppercase_id = uppercase_llm.send(:context_id, uppercase_context)
     lowercase_id = lowercase_llm.send(:context_id, lowercase_context)
-    
+
     assert_equal uppercase_id, lowercase_id
   end
 
@@ -197,23 +197,23 @@ class NGramLLMTest < Minitest::Test
     bigram = NGramLLM.new(2)
     trigram = NGramLLM.new(3)
     fourgram = NGramLLM.new(4)
-    
+
     sample_text = "hello world"
-    
+
     bigram.train(sample_text)
     trigram.train(sample_text)
     fourgram.train(sample_text)
-    
+
     # n-1 should be the context size
     assert_equal 1, bigram.instance_variable_get(:@context_size)
     assert_equal 2, trigram.instance_variable_get(:@context_size)
     assert_equal 3, fourgram.instance_variable_get(:@context_size)
-    
+
     # Each model should have different context patterns
     assert_operator bigram.model.keys.size, :>, 0
     assert_operator trigram.model.keys.size, :>, 0
     assert_operator fourgram.model.keys.size, :>, 0
-    
+
     # Different n values should lead to different model structures
     refute_equal bigram.model.keys.size, trigram.model.keys.size
   end

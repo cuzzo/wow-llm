@@ -90,11 +90,11 @@ class TokenLLM
     generated_tokens = @tokenizer.tokenize(prompt)
 
     # Get the last context_size characters
-    current_context = generated_tokens[(-@context_size)..] 
+    current_context = generated_tokens[(-@context_size)..]
 
     puts "Generating #{length} characters..."
     length.times do
-      next_token = weighted_choice(next_options(current_context, temp, k)) 
+      next_token = weighted_choice(next_options(current_context, temp, k))
 
       if next_token.nil?
         next_char == fallback_char()
@@ -138,7 +138,7 @@ class TokenLLM
     result = []
     token_context.each_with_index do |token, idx|
       # Shift each token to its position and OR it in
-      result[idx / 5] ||= 0 
+      result[idx / 5] ||= 0
       result[idx / 5] |= (token & 0x0FFF) << ((idx % 5) * 12)
     end
     result
@@ -195,7 +195,7 @@ class TokenLLM
     (0...@context_size).each.reduce({}) do |acc, i|
       # Get counts for this context
       options = @model[context_id(c)] || {}
-      
+
       weight = weights()[i]
       options.each do |token, v|
         acc[token] ||= 0
@@ -203,10 +203,10 @@ class TokenLLM
       end
 
       # Shorten context by removing oldest character
-      c.shift  
+      c.shift
 
       acc
-   end  
+   end
   end
 
   def weights(bias_factor = 30.0)
@@ -216,7 +216,7 @@ class TokenLLM
     # Index 0 will be for the highest order n-gram (full context_size)
     # Last index will be for unigrams
     weights = []
-    
+
     # Generate exponentially biased weights
     # Higher bias_factor means stronger preference for higher-order n-grams
     for i in 0..@context_size
@@ -224,7 +224,7 @@ class TokenLLM
       # (remember i=0 is the highest-order n-gram)
       weights[i] = Math.exp(bias_factor * (1.0 - i.to_f/@context_size))
     end
-    
+
     # Normalize weights to sum to 1.0
     total = weights.sum
     weights.map! { |w| w / total }
