@@ -34,4 +34,3 @@ llm.train(training_data[0...data_len])
 File.write("models/#{output_file}", llm.model.to_msgpack, mode: "wb")
 
 puts "MODEL WRITTEN TO: models/#{output_file}"
-

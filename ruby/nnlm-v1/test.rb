@@ -32,7 +32,7 @@ module Minitest::Assertions
   # Asserts that two hashes (like embeddings) have the same keys and corresponding
   # vector values are element-wise equal within a delta.
   def assert_embedding_hash_in_delta(expected_hash, actual_hash, delta = 1e-6, msg = nil)
-     msg ||= "Expected embedding hashes to be equal within delta #{delta}"
+    msg ||= "Expected embedding hashes to be equal within delta #{delta}"
      assert_equal(expected_hash.keys.sort, actual_hash.keys.sort, "#{msg} (keys differ)")
      expected_hash.each do |key, expected_vec|
        assert(actual_hash.key?(key), "#{msg} (actual hash missing key #{key})")
@@ -531,7 +531,7 @@ class TestNNLM < Minitest::Test
     expected_grad_embeddings = Hash.new { |h, k| h[k] = Array.new(@embedding_dim, 0.0) }
     context_indices = @test_context_indices
     context_indices.each_with_index do |word_ix, i|
-       start_idx = i * @embedding_dim
+      start_idx = i * @embedding_dim
        end_idx = start_idx + @embedding_dim - 1
        embedding_grad_slice = expected_d_input_layer[start_idx..end_idx]
        # Important: Use add_vectors for accumulation if the same index appeared multiple times

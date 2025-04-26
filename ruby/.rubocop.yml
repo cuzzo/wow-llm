@@ -19,3 +19,9 @@ Style/MethodCallWithoutArgsParentheses:
 
 Layout/ExtraSpacing:
   Enabled: False
+
+Style/SymbolArray:
+  Enabled: False
+
+Metrics/MethodLength:
+  Enabled: False

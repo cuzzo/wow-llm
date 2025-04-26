@@ -32,7 +32,7 @@ module Minitest::Assertions
   # Asserts that two hashes (like embeddings) have the same keys and corresponding
   # vector values are element-wise equal within a delta.
   def assert_embedding_hash_in_delta(expected_hash, actual_hash, delta = 1e-6, msg = nil)
-     msg ||= "Expected embedding hashes to be equal within delta #{delta}"
+    msg ||= "Expected embedding hashes to be equal within delta #{delta}"
      assert_equal(expected_hash.keys.sort, actual_hash.keys.sort, "#{msg} (keys differ)")
      expected_hash.each do |key, expected_vec|
        assert(actual_hash.key?(key), "#{msg} (actual hash missing key #{key})")

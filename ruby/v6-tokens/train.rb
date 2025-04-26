@@ -36,4 +36,3 @@ File.write("models/#{output_model_file}", llm.model.to_msgpack, mode: "wb")
 File.write("models/#{output_token_file}", llm.token_to_id.to_msgpack, mode: "wb")
 
 puts "MODEL WRITTEN TO: models/#{output_token_file}"
-

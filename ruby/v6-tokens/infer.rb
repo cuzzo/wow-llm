@@ -21,4 +21,3 @@ generated_output = llm.generate(start_prompt, token_count)
 puts "\n--- Generated Text ---"
 puts generated_output
 puts "----------------------"
-

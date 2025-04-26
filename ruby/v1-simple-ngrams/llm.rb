@@ -98,5 +98,3 @@ class NGramLLM
     options.keys.sample
   end
 end
-
-

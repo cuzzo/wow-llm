@@ -22,4 +22,3 @@ llm.train(files)
 llm.save(output_model_file, output_token_file)
 
 puts "MODEL WRITTEN TO: #{output_token_file}"
-

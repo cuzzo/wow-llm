@@ -208,7 +208,11 @@ class NGramLLM
     c = context.dup
     (0...@context_size).each.reduce({}) do |acc, i|
       # Get counts for this context
+<<<<<<< HEAD
       options = @model[context_id(c)] || {}
+=======
+     options = @model[context_id(c)] || {}
+>>>>>>> 432472e (Fix whitespace automatically with Rubocop.)
 
       weight = weights()[i]
       options.each do |char, v|

@@ -24,4 +24,3 @@ llm.train(training_data[0...data_len])
 File.write("model.#{ARGV[1]}-#{ARGV[2]}.json", llm.model.to_json)
 
 puts "MODEL WRITTEN TO: model.json"
-

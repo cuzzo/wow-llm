@@ -31,4 +31,3 @@ puts "\n--- Predictions ---"
 context1 = "It took Ned a moment"
 pred1 = nnlm.predict_next_word(context1)
 puts "Context: #{context1} -> Predicted: #{pred1}" # Likely predicts 'cat' or 'dog'
-

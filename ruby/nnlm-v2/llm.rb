@@ -379,7 +379,7 @@ class NNLM
       example_count = 0
 
       1_0000.times do |batch|
-      	excerpts = get_input(training_dir, batch, 500)
+      	 excerpts = get_input(training_dir, batch, 500)
 
         excerpts.each_with_index do |excerpt|
           # Create context windows and targets
@@ -547,4 +547,3 @@ class NNLM
       .map { |input| input[(batch*batch_size)...((batch+1)*batch_size+1)] } # Get batch_size tokens for each book
   end
 end
-
