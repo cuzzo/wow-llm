@@ -1,3 +1,4 @@
+```
  ~~~ ~~~~~~~ ~~~ 
  ~~~ FORWARD ~~~ 
  ~~~ ~~~~~~~ ~~~ 
@@ -128,3 +129,5 @@ Nothing would change.
 
 This would still be fed backward through the neural network to 
 strengthen connections rather than weaken them.
+
+```
