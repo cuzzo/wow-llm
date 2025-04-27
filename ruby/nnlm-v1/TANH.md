@@ -5,7 +5,7 @@ The car needs to know how to adjust its steering wheel (weights) based on what i
 
 # Why We Need tanh
 
-Without tanh, here's what happens:
+Without `tanh`, here's what happens:
 
 * Small inputs create small adjustments
 * Large inputs create large adjustments
@@ -19,7 +19,7 @@ This creates problems because:
 
 # What tanh Does
 
-The tanh function is like a special "curve shaper" that:
+The `tanh` function is like a special "curve shaper" that:
 
 * Takes any input (-∞ to +∞)
 * Squeezes it into a range between -1 and +1
@@ -33,7 +33,7 @@ The tanh function is like a special "curve shaper" that:
 
 # Why the Derivative (dtanh) Matters
 
-The derivative of tanh tells us the steepness of the slope at any point:
+The derivative of `tanh` tells us the steepness of the slope at any point:
 
 In the middle (near 0): Slope is steep (close to 1) → Learning happens quickly
 At extremes (far from 0): Slope is gentle (close to 0) → Learning slows down
@@ -50,7 +50,7 @@ The steepness of the slope is like the sensitivity of our learning:
 
 * Too steep everywhere: The network jumps around wildly, overshooting the answer
 * Too flat everywhere: The network learns too slowly or gets stuck
-* Variable steepness (what tanh gives us): The network can make bold moves when far from the answer and careful adjustments when close
+* Variable steepness (what `tanh` gives us): The network can make bold moves when far from the answer and careful adjustments when close
 
 When we multiply our error signal by dtanh during backpropagation, we're essentially saying: 
 
@@ -71,3 +71,10 @@ Error × dtanh at different points:
           v
           •->•  (small step)
 ```
+
+
+
+* Backpropagation uses the slope to determine how much to adjust weights
+* When `dtanh` is steep (near 0), error signals pass through strongly
+* When `dtanh` is flat (far from 0), error signals are dampened
+* This prevents wild oscillations and helps convergence
