@@ -3,7 +3,6 @@
 require "set"
 require "cmath" # Using CMath just for tanh convenience, could implement manually
 require "msgpack"
-require "byebug"
 
 require_relative "tokenizer"
 
@@ -142,8 +141,10 @@ class NNLM
     @vocab_size.times do |i|
       @embeddings[i] = Array.new(@embedding_dim) { (rand * 0.1) - 0.05 }
     end
-    # Ensure PAD embedding is zero? Often helpful.
-    @embeddings[@word_to_ix["[PAD]"]] = Array.new(@embedding_dim, 0.0)
+
+    if @word_to_ix.key?("[PAD]")
+      @embeddings[@word_to_ix["[PAD]"]] = Array.new(@embedding_dim, 0.0)
+    end
 
     # Hidden Layer Weights/Biases
     @W_h = Array.new(input_concat_size) { Array.new(@hidden_size) { (rand * 0.1) - 0.05 } }
@@ -178,7 +179,7 @@ class NNLM
     # [ x, y, z ]
     #
     # In this example, we are only compressing 4 total inputs of knowledge into 3.
-    # However, in a real nueral network, the context_size maybe be 20 and the dimension size 512
+    # However, in a real neural network, the context_size maybe be 20 and the dimension size 512
     # And the hidden_size maybe 64
     #
     # So we would compress 10k pieces of information down to 64
@@ -239,6 +240,88 @@ class NNLM
 
   # --- Backward Pass (Backpropagation) ---
   # O(C*E*H + H*V)
+  #
+  # GOAL: Carefully adjust the network's internal settings (its "knowledge")
+  # based on the *single example* it just processed (a specific [w1,w2,...wn]
+  # context and its ACTUAL following word). We want to make the network slightly
+  # better at predicting this word for *this specific context* if it
+  # were to see it again.
+  #
+  # THE CHALLENGE: We can't just force the network to be 100% right for this
+  # one example! Doing that (like cranking one dial all the way) would likely
+  # mess up its ability to correctly predict *other* examples it learned before.
+  # The goal is to make a small improvement on the current task while *minimizing
+  # the disruption* to the network's general knowledge.
+  #
+  # WHAT IS ADJUSTED? Backpropagation is a clever process that figures out exactly
+  # how much each adjustable setting in the network contributed to any error made
+  # on the *last prediction*. It then calculates tiny "nudges" (called gradients)
+  # for each setting, indicating the direction (increase or decrease) that would
+  # have reduced that specific error.
+  #
+  # We cautiously apply these nudges using a small 'learning rate'.
+  #
+  # For our network processing [w1, w2,...wn] inputs, the settings we can adjust are:
+  #
+  # 1. Embedding dimensions (the unknown meanings of individual words)
+  #    - Each word is encoded as a vector with N dimensions (@embedding_dim)
+  #    - The values here are meaningless to us, but the network adjusts them
+  #      and this is what gives the words meaning to the netowrk.
+  #
+  # 2. Hidden Weights (Input -> Hidden Layer Connections)
+  #    - Imagine "dials" controlling how strongly each input coordinate (w1, w2, and w3)
+  #      influences each *hidden neuron* (an internal processing unit).
+  #    - Nudging these weights changes *what features or patterns* the hidden neurons
+  #      learn to detect from the input coordinates (e.g., is the word an adjective? is it plueral?).
+  #
+  # 3. Hidden Biases (Hidden Neuron Baseline Activation)
+  #    - Each hidden neuron has its own "activation threshold" or baseline tendency.
+  #      Think of it as how easily the neuron gets excited or "fires" once it sees the input pattern.
+  #    - A positive bias means it fires easily; negative means it needs a stronger pattern signal.
+  #    - Nudging these adjusts the general sensitivity of the hidden neurons.
+  #
+  # 4. Output Weights (Hidden Layer -> Output Score Connections)
+  #    - These are dials controlling how much the activation level of each *hidden neuron*
+  #      contributes to the final score for each *possible output next word*.
+  #    - If a hidden neuron learned a useful pattern (like "hello world, it's"), these weights
+  #      determine how much that pattern boosts the score for the relevant output class ("me").
+  #    - Nudging these changes how the detected patterns are used to "vote" for the final classification.
+  #
+  # 5. Output Biases (Output Class Baseline Preference)
+  #    - This is the starting score or baseline preference assigned to each output class
+  #      *before* even considering the evidence from the hidden layer via the specific input.
+  #    - Think of it as the network's default assumption about the classes. If, during training,
+  #      the "Inside" class appears much more frequently than "Outside", the "Inside" class
+  #      might develop a higher positive bias, giving it a head start in the scoring.
+  #    - Nudging these adjusts the overall base likelihood assigned to each class, independent
+  #      of the specific [x, y, z] input currently being processed. It helps the network
+  #      account for general trends in the data.
+  #
+  # HOW IT WORKS (Conceptually): Backpropagation uses calculus (specifically, the chain rule)
+  # to efficiently calculate the precise "blame" each Weight and Bias holds for the final
+  # error. You don't need to understand the calculus details, just that it provides the exact
+  # direction and relative magnitude for the nudges needed to improve. The learning rate
+  # ensures these nudges are small, preserving previous learning while gradually adapting.
+  #
+  # The objective of this function is to update everything in the neural network by the
+  # Exactly right amounts, to improve performance re-predicting the same result.
+  #
+  # Niavely, we could just set the Nueral Network to return 100% for whatever context
+  # we last saw. This would improve accuracy for that context, but it would come
+  # at a high *COST*.
+  #
+  # The goal of backward is to figure out how we can improve performance while MINIMIZING
+  # the cost to all other predictions.
+  #
+  # We assume the Nueral Network has valueable weights & biases, and we want to change
+  # them with extreme caution.
+  #
+  # We can change 5 things:
+  #  1. The embedding dimensions (the unknown meanings of individual words)
+  #  2. The Hidden Weights (the connections from these words to our neurons)
+  #  3. The Hidden Biases (the neural network's internal knowledge)
+  #  4. The Output Weights (the connections from the neural network back to our output words)
+  #  5. The Output Biases (???)
   def backward(context_indices, target_index, forward_pass_data)
     probabilities = forward_pass_data[:probabilities]
     hidden_activation = forward_pass_data[:hidden_activation]
