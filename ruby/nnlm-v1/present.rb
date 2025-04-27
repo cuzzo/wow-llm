@@ -79,6 +79,8 @@ class NNLMPresenter < NNLM
         format_vector(il, 4, "IL"),
         format_sign("x", 2, 4),
         format_matrix(@W_h, 4, "HW"),
+        format_sign("=>", 2, 4),
+        format_vector(multiply_vec_mat(il, @W_h), 4, "???"),
         format_sign("+", 1, 4),
         format_vector(@b_h, 4, "HB"),
         format_sign("=>", 1, 4), 
@@ -87,6 +89,8 @@ class NNLMPresenter < NNLM
         format_vector(ha, 4, "HA"),
         format_sign("x", 1, 4),
         format_matrix(@W_o, 4, "OW"),
+        format_sign("=>", 1, 4),
+        format_vector(multiply_vec_mat(ha, @W_o), 4, "???"),
         format_sign("+", 1, 4),
         format_vector(@b_o, 4, "OB"),
         format_sign("=>", 1, 4),
@@ -123,7 +127,7 @@ class NNLMPresenter < NNLM
     delta_embeddings = [
       format_vector(es, 4, "ErrS"),
       format_sign("x", 2, 4),
-      format_matrix(transpose(@W_o), 4, "TRANS(OH)"),
+      format_matrix(transpose(@W_o), 4, "TRANS(OW)"),
       format_sign("=>", 2, 4),
       format_vector(dhis, 4, "dHIS"),
       format_sign("x", 2, 4),
@@ -131,7 +135,7 @@ class NNLMPresenter < NNLM
       format_sign("=>", 2, 4),
       format_vector(dhi, 4, "dHI"),
       format_sign("x", 2, 4),
-      format_matrix(transpose(@W_h), 4, "TRANS(OW)"),
+      format_matrix(transpose(@W_h), 4, "TRANS(HW)"),
       format_sign("=>", 2, 4),
       format_vector(dil, 4, "dIL")
       ]
@@ -192,7 +196,7 @@ class NNLMPresenter < NNLM
     puts ""
     puts " -> GRAD HIDDEN BIAS (dHI)"
     puts ""
-    puts format_vector(grad_b_h, 4, "dWH")
+    puts format_vector(grad_b_h, 4, "dBH")
 
   end
 
@@ -215,7 +219,7 @@ class NNLMPresenter < NNLM
     idx_0 = ("x" * context_indices.select { |idx| idx == 0 }.size).rjust(2, " ")
     idx_1 = ("x" * context_indices.select { |idx| idx == 1 }.size).rjust(2, "-")
     [
-      "EMEDDINGS".center(20),
+      "EMBEDDINGS".center(20),
       "",
       idx_0 + " " + vf(@embeddings[0]),
       idx_1 + " " + vf(@embeddings[1]),
@@ -288,9 +292,6 @@ def truth_table_example
   )
   
   nnlm.build_vocabulary(["false", "true"])
-  
-  #nnlm.present_forward(context_indices)
-  #nnlm.present_backward(context_indices, 0)
   
   total_loss = 0
   (1..epochs).each do |i|
