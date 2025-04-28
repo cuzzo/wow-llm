@@ -225,54 +225,31 @@ So we update each bias by the *INVERSE* of this:
 
 ```
 
-        PRED   REAL PROBABILITY        GRADIENT
- the    0.4        0.0              0.4 - (0.0 * lR)
- go     0.3        1.0              0.3 - (1.0 * lR)
- dance  0.2        0.0              0.2 - (0.0 * lR)
- fly    0.05       0.0              0.05 - (0.0 * lR)
+         BIAS     PRED   REAL PROBABILITY         GRADIENT (ErrS)
+ the     0.42     0.4        0.0              0.4 - 0.0  =  0.4
+ go      0.15     0.3        1.0              0.3 - 1.0  = -0.7
+ dance   0.1      0.2        0.0              0.2 - 0.0  =  0.2
+ fly     0.01     0.05       0.0              0.05 - 0.0 =  0.05
  ...
 
- * lR = learning rate
 ```
 
-For simplicity, let's imagine the learning rate is 0.5.
-The gradient (or change) we would apply to the output baises is:
-
-```
-        GRADIENT
- the      0.2
- go      -0.35
- dance    0.1
- fly      0.025
- ...
-```
 
 *What does this mean?*
 
-After the gradients are applied (subtraction), the `-0.35` applied to go
-will give it a higher bias, and the positve values assigned to all other biases,
+When the gradients are applied (subtraction), negative gradients will
+lead to higher biases, and the positve values assigned to all other biases,
 will give them lower biases.
 
-If the original biases looked like:
-
 ```
-         BIAS       GRADIENT
- the     0.42         0.2
- go      0.15        -0.35
- dance   0.1          0.1
- fly     0.01         0.025
+           BIAS          GRADIENT              UPDATED BIAS        
+ the       0.42          0.4 * lR          0.42 -  0.2   =  0.22   
+ go        0.15    -    -0.7 * lR    =>    0.15 - -0.35  =  0.5    
+ dance     0.1           0.2 * lR          0.1  -  0.1   =  0.0    
+ fly       0.01          0.05 * lR         0.01 -  0.025 = -0.015  
  ...
-```
 
-Then the updated biases will look like:
-
-```
-             UPDATED BIAS
- the     0.42 -  0.2   =  0.22
- go      0.15 - -0.35  =  0.5
- dance   0.1  -  0.1   =  0.0
- fly     0.01 -  0.025 = -0.015
- ...
+ * lR = 0.5
 ```
 
 *Remember* the word "the" might have a high bias to vote for itself.
@@ -289,10 +266,10 @@ To do that, we need to look at the rate of *change* (the derivative).
 Remember, this represents how much an `output` pays attention to a neuron.
 
 The output is sent signals directly from neurons. An output can only be *wrong*
-if it gets the bad inputs from its connections to the neurons.
+if it gets bad inputs from its connections to the neurons (given its bias).
 
 These connections are the `weights`, and so the output must adjust the `weight` 
-that it gives to neuron's vote whenever the output makes the wrong prediction.
+that it gives to neuron's votes whenever the output its final prediction wrong.
 
 Imagine a neuron that learned to pick up on the word "fire" being in the context. 
 The word "dance" may have learned to weight signals from this neuron very low. 
