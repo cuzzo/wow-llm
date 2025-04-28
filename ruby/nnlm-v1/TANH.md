@@ -122,3 +122,38 @@ Error × dtanh at different points:
 Their tendency to approach zero for saturated inputs contributes to the vanishing gradient problem, 
 which is a major limitation, especially in very deep networks.
 
+
+
+# Graph of tanh
+
+```
+
+   1.0 |                                                ***********
+       |                                          *****
+       |                                       ****
+       |                                     **
+       |                                   **
+       |                                  *
+   0.5 |                                 *
+       |                                *
+       |                               *
+       |                              *
+       |                             *
+       |                            *
+   0.0 |----------------------------|-------------------------------
+       |                           *
+       |                          *
+       |                         *
+       |                        *
+       |                       *
+  -0.5 |                      *
+       |                     *
+       |                    *
+       |                  **
+       |                **
+       |             ***
+  -1.0 |*************                                            
+      -5    -4    -3    -2    -1     0     1     2     3     4     5
+```
+
+# Graph of dtanh
