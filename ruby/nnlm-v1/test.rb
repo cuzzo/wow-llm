@@ -202,8 +202,6 @@ class TestNNLM < Minitest::Test
   # Test Forward Pass
   # ============================================================================
   def test_forward_pass_calculations
-    puts "\n--- Testing Forward Pass ---"
-
     # --- 1. Expected Projection/Concatenation ---
     # Embeddings for indices 1 and 2 are [0.1, 0.2] and [0.3, -0.1]
     expected_input_layer = [0.1, 0.2, 0.3, -0.1]
@@ -220,12 +218,10 @@ class TestNNLM < Minitest::Test
     # Add bias b_h = [0.05, -0.05, 0.1]
     # hidden_input = [0.09+0.05, 0.01-0.05, 0.14+0.1] = [0.14, -0.04, 0.24]
     expected_hidden_input = [0.14, -0.04, 0.24]
-    puts "Expected Hidden Input (Before Tanh): #{expected_hidden_input.inspect}"
 
     # --- 3. Expected Hidden Layer Activation (Tanh) ---
     expected_hidden_activation = expected_hidden_input.map { |x| CMath.tanh(x).real }
     # expected_hidden_activation approx = [0.139, -0.040, 0.235] (using more precision below)
-    puts "Expected Hidden Activation (Tanh Output): #{expected_hidden_activation.inspect}"
 
     # --- 4. Expected Output Layer Scores ---
     # output_scores = hidden_activation * W_o + b_o
@@ -238,12 +234,9 @@ class TestNNLM < Minitest::Test
       @nnlm.instance_variable_get(:@b_o)
     )
     expected_output_scores = manual_output_scores # Use calculated value for precision
-    puts "Expected Output Scores (Before Softmax): #{expected_output_scores.inspect}"
 
     # --- 5. Expected Probabilities (Softmax) ---
     expected_probabilities = @nnlm.softmax(expected_output_scores)
-    puts "Expected Probabilities (Softmax Output): #{expected_probabilities.inspect}"
-    puts "Sum of Probabilities: #{expected_probabilities.sum}" # Should be close to 1.0
 
     # --- Action: Call the actual forward method ---
     forward_data = @nnlm.forward(@test_context_indices)
@@ -252,17 +245,10 @@ class TestNNLM < Minitest::Test
     assert_instance_of Hash, forward_data, "Forward pass should return a Hash"
     assert_equal [:probabilities, :hidden_activation, :input_layer].to_set, forward_data.keys.to_set, "Forward data keys mismatch"
 
-    puts "\nVerifying Forward Pass Results..."
     assert_vector_in_delta expected_input_layer, forward_data[:input_layer], DELTA, "Input layer (concatenated embeddings) mismatch"
-    puts "Input Layer OK"
-
     assert_vector_in_delta expected_hidden_activation, forward_data[:hidden_activation], DELTA, "Hidden activation (tanh) mismatch"
-    puts "Hidden Activation OK"
-
     assert_vector_in_delta expected_probabilities, forward_data[:probabilities], DELTA, "Probabilities (softmax) mismatch"
     assert_in_delta 1.0, forward_data[:probabilities].sum, DELTA * 10, "Probabilities should sum to 1.0" # Allow slightly larger delta for sum
-    puts "Probabilities OK"
-    puts "--- Forward Pass Test Complete ---"
   end
 
   # Backwards supplies gradients (errors) for hidden wieghts & biases, output weights and biases, and context indices
@@ -465,8 +451,6 @@ class TestNNLM < Minitest::Test
   # Test Backward Pass
   # ============================================================================
   def test_backward_pass_gradients
-    puts "\n--- Testing Backward Pass ---"
-
     # --- Prerequisite: Run forward pass to get intermediate values ---
     # Use the same fixed inputs and parameters from setup
     forward_data = @nnlm.forward(@test_context_indices)
@@ -481,46 +465,38 @@ class TestNNLM < Minitest::Test
     # target_one_hot = [0, 0, 0, 1, 0] for target_index 3
     expected_d_output_scores = probabilities.dup
     expected_d_output_scores[target_index] -= 1.0
-    puts "Expected dL/dOutput_Scores: #{expected_d_output_scores.inspect}"
 
     # --- 2. Expected Gradients for Output Layer (W_o, b_o) ---
     # grad_b_o = d_output_scores
     expected_grad_b_o = expected_d_output_scores
-    puts "Expected grad_b_o: #{expected_grad_b_o.inspect}"
 
     # grad_W_o = outer_product(hidden_activation, d_output_scores) (hidden_size x vocab_size) -> (3 x 5)
     expected_grad_w_o = @nnlm.outer_product(hidden_activation, expected_d_output_scores)
-    puts "Expected grad_W_o (shape #{expected_grad_w_o.size}x#{expected_grad_w_o[0].size}): #{expected_grad_w_o.inspect}"
 
     # --- 3. Expected Gradient w.r.t Hidden Activation Input Signal ---
     # d_hidden_input_signal = d_output_scores * W_o^T
     # d_output_scores (1x5) * W_o^T (5x3) -> (1x3)
     w_o_transpose = @nnlm.transpose(@nnlm.instance_variable_get(:@W_o))
     expected_d_hidden_input_signal = @nnlm.multiply_vec_mat(expected_d_output_scores, w_o_transpose)
-    puts "Expected dL/dHiddenActivation (Signal before dtanh): #{expected_d_hidden_input_signal.inspect}"
 
     # --- 4. Expected Gradient w.r.t Hidden Input (d_hidden_input) ---
     # d_hidden_input = d_hidden_input_signal * dtanh(hidden_activation)
     # dtanh(y) = 1 - y^2
     d_tanh = @nnlm.dtanh(hidden_activation)
     expected_d_hidden_input = @nnlm.multiply_elementwise(expected_d_hidden_input_signal, d_tanh)
-    puts "Expected dL/dHiddenInput (After dtanh): #{expected_d_hidden_input.inspect}"
 
     # --- 5. Expected Gradients for Hidden Layer (W_h, b_h) ---
     # grad_b_h = d_hidden_input
     expected_grad_b_h = expected_d_hidden_input
-    puts "Expected grad_b_h: #{expected_grad_b_h.inspect}"
 
     # grad_W_h = outer_product(input_layer, d_hidden_input) (input_concat_size x hidden_size) -> (4 x 3)
     expected_grad_w_h = @nnlm.outer_product(input_layer, expected_d_hidden_input)
-    puts "Expected grad_W_h (shape #{expected_grad_w_h.size}x#{expected_grad_w_h[0].size}): #{expected_grad_w_h.inspect}"
 
     # --- 6. Expected Gradient w.r.t Input Layer (d_input_layer) ---
     # d_input_layer = d_hidden_input * W_h^T
     # d_hidden_input (1x3) * W_h^T (3x4) -> (1x4)
     w_h_transpose = @nnlm.transpose(@nnlm.instance_variable_get(:@W_h))
     expected_d_input_layer = @nnlm.multiply_vec_mat(expected_d_hidden_input, w_h_transpose)
-    puts "Expected dL/dInputLayer (Gradient for concatenated embeddings): #{expected_d_input_layer.inspect}"
 
     # --- 7. Expected Gradients for Embeddings ---
     # Distribute d_input_layer back to the embeddings used in the context
@@ -534,7 +510,6 @@ class TestNNLM < Minitest::Test
        # Important: Use add_vectors for accumulation if the same index appeared multiple times
       expected_grad_embeddings[word_ix] = @nnlm.add_vectors(expected_grad_embeddings[word_ix], embedding_grad_slice)
     end
-    puts "Expected grad_embeddings: #{expected_grad_embeddings.inspect}"
 
 
     # --- Action: Call the actual backward method ---
@@ -545,26 +520,18 @@ class TestNNLM < Minitest::Test
     expected_keys = [:grad_embeddings, :grad_W_h, :grad_b_h, :grad_W_o, :grad_b_o].to_set
     assert_equal expected_keys, gradients.keys.to_set, "Backward gradients keys mismatch"
 
-    puts "\nVerifying Backward Pass Results..."
     # Output Layer Gradients
     assert_vector_in_delta expected_grad_b_o, gradients[:grad_b_o], DELTA, "Gradient b_o mismatch"
-    puts "grad_b_o OK"
     assert_matrix_in_delta expected_grad_w_o, gradients[:grad_W_o], DELTA, "Gradient W_o mismatch"
-    puts "grad_W_o OK"
 
     # Hidden Layer Gradients
     assert_vector_in_delta expected_grad_b_h, gradients[:grad_b_h], DELTA, "Gradient b_h mismatch"
-    puts "grad_b_h OK"
     assert_matrix_in_delta expected_grad_w_h, gradients[:grad_W_h], DELTA, "Gradient W_h mismatch"
-    puts "grad_W_h OK"
 
     # Embedding Gradients
     # Check that only expected keys have non-zero gradients if applicable
     assert_equal expected_grad_embeddings.keys.sort, gradients[:grad_embeddings].keys.sort, "Gradient embeddings keys mismatch"
     assert_embedding_hash_in_delta expected_grad_embeddings, gradients[:grad_embeddings], DELTA, "Gradient embeddings values mismatch"
-    puts "grad_embeddings OK"
-
-    puts "--- Backward Pass Test Complete ---"
   end
 
 
@@ -684,8 +651,6 @@ class TestNNLM < Minitest::Test
   # Test process_context Return Value (Loss) and Side Effects (Parameter Updates)
   # ============================================================================
   def test_process_context_returns_loss_and_updates_parameters
-    puts "\n--- Testing process_context (Return Value and Side Effect) ---"
-
     # --- Arrange ---
     # 1. Get initial parameter state (done in setup, stored in @initial_*)
 
@@ -695,7 +660,6 @@ class TestNNLM < Minitest::Test
     probabilities_for_loss = forward_data_for_loss[:probabilities]
     # Loss = -log(probability of target_index)
     expected_loss = -Math.log(probabilities_for_loss[@test_target_index] + 1e-9) # Use target_index=3
-    puts "Expected Loss: #{expected_loss}"
 
     # 3. Determine expected gradients (run backward pass conceptually or actually)
     #    Use the same forward data as calculated above for consistency
@@ -719,22 +683,13 @@ class TestNNLM < Minitest::Test
     end
     expected_b_o = @nnlm.subtract_vectors(@initial_b_o, @nnlm.scalar_multiply(lr, expected_gradients[:grad_b_o]))
 
-    puts "Initial b_h: #{@initial_b_h.inspect}"
-    puts "Expected grad_b_h: #{expected_gradients[:grad_b_h].inspect}"
-    puts "Expected final b_h: #{expected_b_h.inspect}"
-
-
     # --- Act ---
     # Call process_context with the test sentence and index
     # Store the returned loss value
     actual_loss = @nnlm.process_context(@test_padded_sentence, @test_processing_index)
 
-    # --- Assert ---
-    puts "\nVerifying process_context Results..."
-
     # 1. Assert the returned loss value
     assert_in_delta expected_loss, actual_loss, DELTA, "Returned loss value mismatch"
-    puts "Returned Loss OK"
 
     # 2. Assert the parameter update side effect
     # Get the actual parameters *after* process_context has run
@@ -746,23 +701,15 @@ class TestNNLM < Minitest::Test
 
     # Compare actual parameters with the expected final parameters
     assert_embedding_hash_in_delta expected_embeddings, actual_embeddings, DELTA, "Embeddings mismatch after update"
-    puts "Embeddings Update OK"
 
     assert_matrix_in_delta expected_W_h, actual_W_h, DELTA, "W_h mismatch after update"
-    puts "W_h Update OK"
     assert_vector_in_delta expected_b_h, actual_b_h, DELTA, "b_h mismatch after update"
-    puts "b_h Update OK"
 
     assert_matrix_in_delta expected_W_o, actual_W_o, DELTA, "W_o mismatch after update"
-    puts "W_o Update OK"
     assert_vector_in_delta expected_b_o, actual_b_o, DELTA, "b_o mismatch after update"
-    puts "b_o Update OK"
 
     # Sanity check: ensure embeddings not part of the context gradient didn't change
     assert_vector_in_delta @initial_embeddings[0], actual_embeddings[0], DELTA, "Embedding for index 0 (PAD) should not change"
     assert_vector_in_delta @initial_embeddings[4], actual_embeddings[4], DELTA, "Embedding for index 4 (bar) should not change"
-    puts "Unrelated Embeddings Unchanged OK"
-
-    puts "--- process_context Test Complete ---"
   end
 end
