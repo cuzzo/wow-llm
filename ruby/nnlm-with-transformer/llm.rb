@@ -581,7 +581,7 @@ class NNLM
     d_hidden_input_raw = deactivate(d_hidden_activation, hidden_activation)
 
     # 4. Gradients for Hidden Layer (W_h, b_h) and dL/dAggregatedContext
-    grad_W_h = outer_product(d_hidden_input_raw, aggregated_context) # dL/dW = dL/dOutput * ActivationInput^T
+    grad_W_h = outer_product(aggregated_context, d_hidden_input_raw) # dL/dW = dL/dOutput * ActivationInput^T
     grad_b_h = d_hidden_input_raw # dL/dBias = dL/dOutput
     d_aggregated_context = reverse_weigh(d_hidden_input_raw, @W_h) # dL/dInput = dL/dOutput * W^T
 

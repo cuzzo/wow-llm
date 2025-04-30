@@ -79,6 +79,28 @@ module BasicLinAlg
   end
 end
 
+class BatchGradients
+  attr_reader :embeddings, :W_h, :b_h, :W_o, :b_o
+  attr_writer :embeddings, :W_h, :b_h, :W_o, :b_o
+
+  def initialize(embeddings, w_h, b_h, w_o, b_o)
+    @embeddings = Numo::DFloat.zeros(embeddings.shape)
+    @W_h = Numo::DFloat.zeros(w_h.shape)
+    @b_h = Numo::DFloat.zeros(b_h.shape)
+    @W_o = Numo::DFloat.zeros(w_o.shape)
+    @b_o = Numo::DFloat.zeros(b_o.shape)
+  end
+
+  # Method to reset gradients to zero (useful between batches)
+  def reset!
+    @embeddings *= 0 # Use inplace multiplication by 0 for efficiency
+    @W_h *= 0
+    @b_h *= 0
+    @W_o *= 0
+    @b_o *= 0
+  end
+end
+
 class NNLM
   include BasicLinAlg
 
@@ -232,9 +254,6 @@ class NNLM
     hidden_activation = forward_pass_data[:hidden_activation]
     input_layer = forward_pass_data[:input_layer]
 
-    # Initialize gradients (matching parameter structures)
-    grad_embeddings = Hash.new { |h, k| h[k] = Numo::DFloat.cast([0.0] * @embedding_dim) }
-
     # 1. Calculate the main error signal: "How wrong was our prediction?"
     # This is remarkably simple: subtract 1 from the probability of the correct word
     # Example: If we predicted [0.1, 0.2, 0.7] but target_index was 0
@@ -247,8 +266,8 @@ class NNLM
     # For each connection between hidden layer and output layer:
     # - If hidden value was strong AND error was large, make a big adjustment
     # - If either was small, make a smaller adjustment
-    grad_W_o = outer_product(hidden_activation, d_output_scores)
-    grad_b_o = d_output_scores # Bias gradient is just the error signal
+    @batch.W_o += outer_product(hidden_activation, d_output_scores)
+    @batch.b_o += d_output_scores # Bias gradient is just the error signal
 
     # 3. Send the error signal backwards to the hidden layer
     # "How much did each hidden neuron contribute to our mistakes?"
@@ -264,8 +283,8 @@ class NNLM
 
     # 5. Calculate how to adjust hidden layer weights
     # Similar to step 2, but for the connections between input and hidden layers
-    grad_W_h = outer_product(input_layer, d_hidden_input)
-    grad_b_h = d_hidden_input # Bias gradient
+    @batch.W_h += outer_product(input_layer, d_hidden_input)
+    @batch.b_h += d_hidden_input # Bias gradient
 
     # 6. Send the error all the way back to the input embeddings
     # "How should each word's embedding change to reduce our error?"
@@ -283,49 +302,18 @@ class NNLM
 
       # Add it to our correction sheet for this word's embedding
       # (We add because the same word might appear multiple times)
-      grad_embeddings[word_ix] = add_vectors(grad_embeddings[word_ix], embedding_grad_slice)
+      @batch.embeddings[word_ix, true] += embedding_grad_slice
     end
-
-    {
-      grad_embeddings: grad_embeddings,
-      grad_W_h: grad_W_h, grad_b_h: grad_b_h,
-      grad_W_o: grad_W_o, grad_b_o: grad_b_o
-    }
   end
 
   # --- Parameter Update ---
-  def update_parameters(gradients)
+  def update_parameters(batch_size = 1)
     # Update Embeddings (Sparse update using hash)
-    gradients[:grad_embeddings].each do |word_ix, grad|
-      # Check shapes before attempting subtraction to prevent errors
-      if @embeddings[word_ix, true].shape == grad.shape
-        @embeddings[word_ix, true] -= @learning_rate * grad
-      else
-        # Handle potential shape mismatch if default proc created an unexpected shape
-        # This might indicate an issue in how grad_embeddings is populated or initialized
-        raise "Shape mismatch during embedding update for index #{word_ix}. Embedding shape: #{@embeddings[word_ix, true].shape}, Gradient shape: #{grad_vec.shape}"
-      end
-    end
-
-    # Update Hidden Layer (Dense update using matrix/vector subtraction)
-    grad_wh = gradients[:grad_W_h]
-    grad_bh = gradients[:grad_b_h]
-    if @W_h.shape == grad_wh.shape && @b_h.shape == grad_bh.shape
-      @W_h -= @learning_rate * grad_wh
-      @b_h -= @learning_rate * grad_bh
-    else
-      raise "Shape mismatch updating hidden layer: W_h=#{@W_h.shape} vs Grad=#{@grad_wh.shape}, b_h=#{@b_h.shape} vs Grad=#{grad_bh.shape}"
-    end
-
-    # Update Output Layer (Dense update using matrix/vector subtraction)
-    grad_wo = gradients[:grad_W_o]
-    grad_bo = gradients[:grad_b_o]
-    if @W_o.shape == grad_wo.shape && @b_o.shape == grad_bo.shape
-      @W_o -= @learning_rate * grad_wo
-      @b_o -= @learning_rate * grad_bo
-    else
-      raise "Shape mismatch updating output layer: W_o=#{@W_o.shape} vs Grad=#{@grad_wo.shape}, b_o=#{@b_o.shape} vs Grad=#{grad_bo.shape}"
-    end
+    @embeddings -= @learning_rate * @batch.embeddings / batch_size
+    @W_h -= @learning_rate * @batch.W_h / batch_size
+    @b_h -= @learning_rate * @batch.b_h / batch_size
+    @W_o -= @learning_rate * @batch.W_o / batch_size
+    @b_o -= @learning_rate * @batch.b_o / batch_size
   end
 
   # w -> for each word
@@ -345,10 +333,7 @@ class NNLM
     loss = -Math.log(probabilities[target_index] + 1e-9) # Add epsilon for numerical stability
 
     # Backward pass
-    gradients = backward(context_indices, target_index, forward_data)
-
-    # Update parameters
-    update_parameters(gradients)
+    backward(context_indices, target_index, forward_data)
 
     loss
   end
@@ -359,6 +344,8 @@ class NNLM
 
     padding_ix = @word_to_ix["[PAD]"]
 
+    @batch = BatchGradients.new(@embeddings, @W_h, @b_h, @W_o, @b_o)
+
     puts "\nStarting training..."
     epochs.times do |epoch|
       total_loss = 0.0
@@ -368,12 +355,14 @@ class NNLM
         excerpts = get_input(training_dir, batch, 500)
 
         excerpts.each do |excerpt|
+          @batch.reset!
           # Create context windows and targets
           padded_excerpt = Array.new(@context_size, padding_ix) + excerpt
           (padded_excerpt.size - @context_size).times do |i|
             total_loss += process_context(padded_excerpt, i)
             example_count += 1
           end
+          update_parameters(padded_excerpt.size - @context_size)
         end
         avg_loss = example_count > 0 ? total_loss / example_count : 0
         puts "Epoch #{epoch + 1}/#{epochs}, Batch #{batch + 1}/1000, Average Loss: #{avg_loss.round(4)}, Perplexity: #{(Math::E**avg_loss).round(4)}"
@@ -485,7 +474,7 @@ class NNLM
     files = get_files(training_dir)
 
     start_idx = batch * batch_size
-    end_idx = ((batch + 1) * batch_size)
+    end_idx = start_idx + batch_size
 
     files
       .map do |f|
