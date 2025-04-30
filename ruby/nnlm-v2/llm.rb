@@ -264,7 +264,7 @@ class NNLM
 
     # 5. Calculate how to adjust hidden layer weights
     # Similar to step 2, but for the connections between input and hidden layers
-    grad_W_h = outer_product(input_layer, d_hidden_input)
+    grad_W_h = outer_product(d_hidden_input, input_layer)
     grad_b_h = d_hidden_input # Bias gradient
 
     # 6. Send the error all the way back to the input embeddings

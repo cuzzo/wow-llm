@@ -427,7 +427,7 @@ class NNLM
     # 5. Calculate how to adjust hidden layer weights
     # Similar to step 2, but for the connections between hidden and attention layers
     # Input was context_vector, W_h is emb_dim x hidden_size
-    grad_W_h = outer_product(context_vector, d_hidden_input) # context_vector is row, d_hidden_input is col -> ok
+    grad_W_h = outer_product(d_hidden_input, context_vector) # context_vector is row, d_hidden_input is col -> ok
     grad_b_h = d_hidden_input
 
     # 6. Backprop error to the context vector (dL/dContextVector)
@@ -453,8 +453,6 @@ class NNLM
     })
   end
 
-  # TODO: NEEDS TESTS!
-  #
   # --- ATTENTION BACKPROPAGATION ---
   # Need gradients dL/dW_attn, dL/db_attn, dL/dv_attn
   # And need to propagate dL/dContextVector back to dL/dEmbedding_i
